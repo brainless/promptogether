@@ -7,17 +7,17 @@ and upgrade databases in development and deployment.
 
 ## Tasks
 
-- [ ] Configure a SQLx `SqlitePool` for Tokio with foreign keys enabled, WAL
+- [x] Configure a SQLx `SqlitePool` for Tokio with foreign keys enabled, WAL
       mode, a busy timeout, and bounded connections suitable for SQLite.
-- [ ] Add numbered SQL migrations under `backend/migrations/` and embed them in
+- [x] Add numbered SQL migrations under `backend/migrations/` and embed them in
       the backend binary with SQLx.
-- [ ] Add `backend migrate` for explicit migration runs and make `serve` fail
+- [x] Add `backend migrate` for explicit migration runs and make `serve` fail
       clearly when the database schema is behind.
-- [ ] Create the initial gallery and job tables, indexes, foreign keys, and
+- [x] Create the initial gallery and job tables, indexes, foreign keys, and
       constraints needed by Epics 4 and 5.
-- [ ] Add a local database bootstrap command and document migration creation,
+- [x] Add a local database bootstrap command and document migration creation,
       forward-only changes, and backup expectations.
-- [ ] Keep SQL rows internal to `backend`; map them to `api-types` at the API
+- [x] Keep SQL rows internal to `backend`; map them to `api-types` at the API
       boundary.
 
 ## Initial schema

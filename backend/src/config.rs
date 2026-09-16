@@ -2,13 +2,12 @@ use std::net::SocketAddr;
 use std::env;
 
 const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:3000";
-const DEFAULT_DATABASE_URL: &str = "postgres://localhost:5432/promptogether";
+const DEFAULT_DATABASE_URL: &str = "sqlite:promptogether.db?mode=rwc";
 const DEFAULT_LOG_LEVEL: &str = "backend=info,tower_http=info";
 
 #[derive(Debug, Clone)]
 pub struct Config {
     pub bind_address: SocketAddr,
-    #[allow(dead_code)]
     pub database_url: String,
     pub log_level: String,
 }

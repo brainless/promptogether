@@ -1,3 +1,6 @@
+pub mod gallery;
+pub mod jobs;
+
 pub fn app_name() -> &'static str {
     "promptogether"
 }
