@@ -5,7 +5,7 @@
 #   scripts/export-api-types.sh        Regenerate bindings in place (webapp/src/api/generated/)
 #   scripts/export-api-types.sh check  Fail unless the committed bindings are already up to date
 #
-# The exporter is the api-exporter binary, which calls ts-rs programmatically.
+# The exporter is a binary target in api-types, which calls ts-rs programmatically.
 # In check mode we regenerate into a temporary directory (via the ts-rs
 # TS_RS_EXPORT_DIR env var) and compare against the committed tree, so the
 # committed files are never clobbered.
@@ -18,7 +18,7 @@ COMMITTED_DIR="$REPO_ROOT/webapp/src/api/generated"
 run_exporter() {
     local out_dir="$1"
     # Run from the workspace root so the toolchain and workspace resolve consistently.
-    (cd "$REPO_ROOT" && TS_RS_EXPORT_DIR="$out_dir" cargo run -p api-exporter)
+    (cd "$REPO_ROOT" && TS_RS_EXPORT_DIR="$out_dir" cargo run -p api-types --bin export-api-types)
 }
 
 cmd_export() {

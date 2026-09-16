@@ -1,8 +1,0 @@
-[package]
-name = "api-exporter"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-api-types = { path = "../api-types" }
-ts-rs = { version = "12", features = ["serde-compat", "format", "serde-json-impl"] }

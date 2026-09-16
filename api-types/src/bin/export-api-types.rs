@@ -129,7 +129,7 @@ fn write_barrel(
     let mut barrel = String::new();
     barrel.push_str(NOTE);
     barrel.push_str("\n// This barrel file re-exports every generated binding.\n");
-    barrel.push_str("// Do not edit by hand; regenerate with the api-exporter.\n\n");
+    barrel.push_str("// Do not edit by hand; regenerate with the api-types exporter.\n\n");
 
     for (name, _, _) in results {
         barrel.push_str(&format!("export type {{ {name} }} from \"./{name}\";\n"));

@@ -6,11 +6,10 @@ An inclusive platform for learning to build software with coding agents. Free to
 
 - `webapp/` -- SolidJS 2.0 frontend (TypeScript, Vite, CSS modules). See `webapp/README.md`.
 - `backend/` -- Rust API service (Axum, Tokio, tracing).
-- `api-types/` -- Shared request/response types used by `backend`; the source of truth for the JSON contract.
-- `api-exporter/` -- Binary that generates the TypeScript bindings consumed by `webapp`.
+- `api-types/` -- Shared request/response types used by `backend`, plus the binary that generates the TypeScript bindings consumed by `webapp`; the source of truth for the JSON contract.
 - `epics/` -- Planning and task-tracking documents.
 
-The root `Cargo.toml` defines a workspace containing `backend`, `api-types`, and `api-exporter`.
+The root `Cargo.toml` defines a workspace containing `backend` and `api-types`.
 
 ## Rust workspace
 
@@ -59,7 +58,7 @@ The server shuts down gracefully on SIGINT or SIGTERM.
 ## Generated TypeScript API bindings
 
 `webapp/src/api/generated/` holds the TypeScript declarations for the shared
-API types, produced from the `api-types` crate by the `api-exporter` binary.
+API types, produced by the `export-api-types` binary in the `api-types` crate.
 They are generated and must **not be edited by hand**; change the types in
 `api-types`, then regenerate.
 
