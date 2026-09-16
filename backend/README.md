@@ -47,11 +47,27 @@ After adding a migration file, rebuild the binary so it is included.
 
 The SQLite database file is `promptogether.db` (configurable via `DATABASE_URL`).
 
-Before risky migrations, copy the database file:
+Before risky migrations, use SQLite's online backup command. It creates a consistent
+snapshot even when the database is using WAL mode:
 
 ```sh
-cp promptogether.db promptogether.db.backup-$(date +%Y%m%d)
+sqlite3 promptogether.db ".backup 'promptogether.db.backup-$(date +%Y%m%d-%H%M%S)'"
 ```
+
+If `DATABASE_URL` points elsewhere, replace `promptogether.db` with its database
+file path.
+
+Alternatively, stop the server and every other process using the database, then
+checkpoint the WAL before copying the main file:
+
+```sh
+sqlite3 promptogether.db "PRAGMA wal_checkpoint(TRUNCATE);"
+cp promptogether.db promptogether.db.backup-$(date +%Y%m%d-%H%M%S)
+```
+
+The checkpoint result must report `0` in its first field (no busy connections)
+before copying. Never copy only `promptogether.db` while the application is
+running: committed data may still be in `promptogether.db-wal`.
 
 ## Environment variables
 
