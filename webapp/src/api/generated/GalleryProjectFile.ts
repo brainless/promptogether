@@ -7,6 +7,6 @@ import type { GalleryProjectFilePhase } from "./GalleryProjectFilePhase";
 export type GalleryProjectFile = {
   phase: GalleryProjectFilePhase;
   path: string;
-  language: string | null;
+  language?: string | null;
   content: string;
 };

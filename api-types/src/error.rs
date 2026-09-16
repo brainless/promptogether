@@ -14,5 +14,6 @@ pub struct ErrorResponse {
     pub code: String,
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
     pub details: Option<Value>,
 }

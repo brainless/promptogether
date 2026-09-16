@@ -31,10 +31,14 @@ cargo clippy --workspace -- -D warnings
 To run the server:
 
 ```sh
+cargo run -p backend -- bootstrap
 cargo run -p backend -- serve
 ```
 
-The server binds to `127.0.0.1:3000` by default and logs startup information.
+`bootstrap` creates a fresh SQLite database and applies all migrations. Run it
+before starting the server for the first time. The server fails to start if
+migrations are pending, binds to `127.0.0.1:3000` by default, and logs startup
+information.
 
 ### Configuration
 
@@ -43,7 +47,7 @@ All settings are read from environment variables at startup. Invalid configurati
 | Variable | Default | Description |
 | --- | --- | --- |
 | `BIND_ADDRESS` | `127.0.0.1:3000` | Socket address to bind (e.g. `0.0.0.0:3000`). |
-| `DATABASE_URL` | `postgres://localhost:5432/promptogether` | Postgres connection string. Not yet used. |
+| `DATABASE_URL` | `sqlite:promptogether.db?mode=rwc` | SQLite connection string. |
 | `LOG_LEVEL` / `RUST_LOG` | `backend=info,tower_http=info` | tracing-filter directive. `LOG_LEVEL` takes precedence; falls back to `RUST_LOG`. |
 
 ### Endpoints

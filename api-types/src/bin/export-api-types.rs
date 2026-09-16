@@ -15,8 +15,9 @@ use api_types::gallery::{
 };
 use api_types::health::{HealthResponse, HealthStatus};
 use std::env;
-use std::fs;
-use std::path::PathBuf;
+use std::fs::{self, File};
+use std::io::{self, Read};
+use std::path::{Path, PathBuf};
 use ts_rs::Config;
 use ts_rs::TS;
 
@@ -84,6 +85,61 @@ fn default_export_dir() -> PathBuf {
         .join("generated")
 }
 
+/// Remove bindings created by an earlier exporter run.
+///
+/// The output directory can be overridden, so it is not safe to replace the
+/// directory wholesale. Only regular files carrying the exporter's generated
+/// header are removed, and symlinks are never followed. A nested directory is
+/// removed only when generated files were removed from it and it became empty.
+fn remove_stale_bindings(dir: &Path) -> Result<bool, String> {
+    let mut entries = fs::read_dir(dir)
+        .map_err(|e| format!("failed to read {}: {e}", dir.display()))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("failed to read an entry in {}: {e}", dir.display()))?;
+    entries.sort_by_key(|entry| entry.file_name());
+
+    let mut removed_any = false;
+
+    for entry in entries {
+        let path = entry.path();
+        let file_type = entry
+            .file_type()
+            .map_err(|e| format!("failed to inspect {}: {e}", path.display()))?;
+
+        if file_type.is_dir() {
+            let removed_from_child = remove_stale_bindings(&path)?;
+            if removed_from_child
+                && fs::read_dir(&path)
+                    .map_err(|e| format!("failed to read {}: {e}", path.display()))?
+                    .next()
+                    .is_none()
+            {
+                fs::remove_dir(&path)
+                    .map_err(|e| format!("failed to remove {}: {e}", path.display()))?;
+            }
+            removed_any |= removed_from_child;
+        } else if file_type.is_file() && has_generated_header(&path)? {
+            fs::remove_file(&path)
+                .map_err(|e| format!("failed to remove {}: {e}", path.display()))?;
+            removed_any = true;
+        }
+    }
+
+    Ok(removed_any)
+}
+
+fn has_generated_header(path: &Path) -> Result<bool, String> {
+    let mut header = vec![0; NOTE.len()];
+    let mut file = File::open(path)
+        .map_err(|e| format!("failed to open {}: {e}", path.display()))?;
+
+    match file.read_exact(&mut header) {
+        Ok(()) => Ok(header == NOTE.as_bytes()),
+        Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => Ok(false),
+        Err(e) => Err(format!("failed to read {}: {e}", path.display())),
+    }
+}
+
 fn main() {
     // `TS_RS_EXPORT_DIR` overrides the target directory (ts-rs convention).
     // Otherwise default to the workspace-relative generated directory.
@@ -93,6 +149,7 @@ fn main() {
     };
     let cfg = Config::new().with_out_dir(out_dir.clone());
     fs::create_dir_all(&out_dir).expect("failed to create output directory");
+    remove_stale_bindings(&out_dir).expect("failed to remove stale generated bindings");
 
     let results = export_types(&cfg);
 

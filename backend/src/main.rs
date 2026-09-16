@@ -19,15 +19,7 @@ async fn main() {
                 std::process::exit(1);
             });
 
-            tracing_subscriber::fmt()
-                .with_env_filter(
-                    tracing_subscriber::EnvFilter::try_new(&config.log_level)
-                        .unwrap_or_else(|e| {
-                            eprintln!("warning: invalid log level \"{}\", falling back to info: {e}", config.log_level);
-                            "backend=info,tower_http=info".into()
-                        }),
-                )
-                .init();
+            init_tracing(&config.log_level);
 
             let pool = db::create_pool(&config.database_url).await.unwrap_or_else(|err| {
                 eprintln!("error: failed to create database pool: {err}");
@@ -48,15 +40,7 @@ async fn main() {
                 std::process::exit(1);
             });
 
-            tracing_subscriber::fmt()
-                .with_env_filter(
-                    tracing_subscriber::EnvFilter::try_new(&config.log_level)
-                        .unwrap_or_else(|e| {
-                            eprintln!("warning: invalid log level \"{}\", falling back to info: {e}", config.log_level);
-                            "backend=info,tower_http=info".into()
-                        }),
-                )
-                .init();
+            init_tracing(&config.log_level);
 
             let pool = db::create_pool(&config.database_url).await.unwrap_or_else(|err| {
                 eprintln!("error: failed to create database pool: {err}");
@@ -76,15 +60,7 @@ async fn main() {
                 std::process::exit(1);
             });
 
-            tracing_subscriber::fmt()
-                .with_env_filter(
-                    tracing_subscriber::EnvFilter::try_new(&config.log_level)
-                        .unwrap_or_else(|e| {
-                            eprintln!("warning: invalid log level \"{}\", falling back to info: {e}", config.log_level);
-                            "backend=info,tower_http=info".into()
-                        }),
-                )
-                .init();
+            init_tracing(&config.log_level);
 
             let pool = db::create_pool(&config.database_url).await.unwrap_or_else(|err| {
                 eprintln!("error: failed to create database pool: {err}");
@@ -121,6 +97,12 @@ async fn main() {
             std::process::exit(2);
         }
     }
+}
+
+fn init_tracing(log_level: &str) {
+    let filter = tracing_subscriber::EnvFilter::try_new(log_level)
+        .expect("log filter was validated while loading configuration");
+    tracing_subscriber::fmt().with_env_filter(filter).init();
 }
 
 async fn shutdown_signal() {

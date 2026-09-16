@@ -11,5 +11,5 @@ import type { JsonValue } from "./serde_json/JsonValue";
 export type ErrorResponse = {
   code: string;
   message: string;
-  details: JsonValue | null;
+  details?: JsonValue | null;
 };

@@ -33,6 +33,7 @@ pub struct GalleryProjectFile {
     pub phase: GalleryProjectFilePhase,
     pub path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
     pub language: Option<String>,
     pub content: String,
 }
