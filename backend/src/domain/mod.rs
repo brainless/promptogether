@@ -1,5 +1,8 @@
 pub mod gallery;
 pub mod jobs;
+pub mod jobs_lifecycle;
+pub mod jobs_repo;
+pub mod jobs_worker;
 
 pub fn app_name() -> &'static str {
     "promptogether"

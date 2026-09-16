@@ -18,6 +18,8 @@ cargo run -- serve
 | `cargo run -- bootstrap` | Create a fresh database and apply all migrations. |
 | `cargo run -- migrate` | Apply pending migrations to an existing database. |
 | `cargo run -- serve` | Start the API server (fails if migrations are pending). |
+| `cargo run -- worker` | Start the background worker (polls and processes jobs). |
+| `cargo run -- enqueue-fixture` | Enqueue a dev-only fixture job. Pass `--fail` for a failing job. |
 
 `serve` is the default when no subcommand is given.
 
@@ -76,3 +78,63 @@ running: committed data may still be in `promptogether.db-wal`.
 | `DATABASE_URL` | SQLite connection string. | `sqlite:promptogether.db?mode=rwc` |
 | `BIND_ADDRESS` | Server bind address. | `127.0.0.1:3000` |
 | `LOG_LEVEL` / `RUST_LOG` | Tracing filter. | `backend=info,tower_http=info` |
+| `WORKER_CONCURRENCY` | Max concurrent job handlers (1-4). | `2` |
+| `WORKER_POLL_INTERVAL_MS` | Milliseconds between poll cycles (min 100). | `1000` |
+| `WORKER_LEASE_DURATION_SECS` | Job lease duration in seconds (min 5). | `30` |
+| `WORKER_SHUTDOWN_TIMEOUT_SECS` | Seconds to wait for handlers on shutdown (min 1). | `30` |
+
+Concurrency is capped at 4 because the SQLite pool has 5 max connections.
+
+## Worker command
+
+```sh
+cargo run -p backend -- worker
+```
+
+The worker polls the `jobs` table for pending work, claims jobs with a lease, and processes them concurrently up to `WORKER_CONCURRENCY`. It requires migrations to be applied first (same as `serve`).
+
+The worker shuts down gracefully on SIGINT or SIGTERM: it stops claiming new jobs and waits up to `WORKER_SHUTDOWN_TIMEOUT_SECS` for in-flight handlers to finish.
+
+## Enqueue fixture command
+
+```sh
+cargo run -p backend -- enqueue-fixture
+cargo run -p backend -- enqueue-fixture --fail
+```
+
+Enqueues a development-only fixture job. With `--fail`, the job is enqueued with parameters that cause it to fail (useful for testing retry and terminal-failure paths).
+
+This command is for local development and testing only. Do not use it in production.
+
+## Job lifecycle
+
+1. Jobs start as `pending`.
+2. When claimed, a job becomes `running` with a lease token and its `attempts` counter is incremented.
+3. The lease is renewed automatically every `lease_duration / 2` while the handler is active.
+4. On success: the job is marked `completed`.
+5. On failure with attempts remaining: the job returns to `pending` with exponential backoff.
+6. On failure at max attempts: the job is marked `failed` (terminal).
+7. Expired leases are automatically reclaimed before each claim cycle.
+
+**Backoff formula:** `min(base_backoff * 2^(attempts-1), max_backoff)` where `base_backoff` = 1s and `max_backoff` = 300s.
+
+## Fixture job walkthrough
+
+A step-by-step guide to exercise the worker locally.
+
+```sh
+# 1. Bootstrap the database
+cargo run -p backend -- bootstrap
+
+# 2. Enqueue a fixture job (success)
+cargo run -p backend -- enqueue-fixture
+
+# 3. Run the worker (it will claim and complete the job)
+cargo run -p backend -- worker
+
+# 4. Enqueue a failing fixture job
+cargo run -p backend -- enqueue-fixture --fail
+
+# 5. Run the worker again (it will retry and eventually mark as terminal failure)
+cargo run -p backend -- worker
+```

@@ -12,10 +12,23 @@ pub struct Config {
     pub log_level: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct WorkerConfig {
+    pub concurrency: usize,
+    pub poll_interval_ms: u64,
+    pub lease_duration_secs: i64,
+    pub shutdown_timeout_secs: u64,
+}
+
 #[derive(Debug)]
 pub enum ConfigError {
     InvalidBindAddress(String),
     InvalidLogFilter {
+        setting: &'static str,
+        value: String,
+        reason: String,
+    },
+    InvalidSetting {
         setting: &'static str,
         value: String,
         reason: String,
@@ -34,6 +47,11 @@ impl std::fmt::Display for ConfigError {
                 value,
                 reason,
             } => write!(f, "invalid {setting}: \"{value}\": {reason}"),
+            ConfigError::InvalidSetting {
+                setting,
+                value,
+                reason,
+            } => write!(f, "invalid {setting}: \"{value}\": {reason}"),
             ConfigError::NonUnicodeValue(setting) => {
                 write!(f, "invalid {setting}: value is not valid Unicode")
             }
@@ -42,6 +60,33 @@ impl std::fmt::Display for ConfigError {
 }
 
 impl std::error::Error for ConfigError {}
+
+fn parse_env_i64(
+    setting: &'static str,
+    default: i64,
+    validate: impl FnOnce(i64) -> bool,
+    reason: &str,
+) -> Result<i64, ConfigError> {
+    match env::var(setting) {
+        Ok(val) => {
+            let parsed = val.parse::<i64>().map_err(|_| ConfigError::InvalidSetting {
+                setting,
+                value: val.clone(),
+                reason: "not a valid integer".to_string(),
+            })?;
+            if !validate(parsed) {
+                return Err(ConfigError::InvalidSetting {
+                    setting,
+                    value: val,
+                    reason: reason.to_string(),
+                });
+            }
+            Ok(parsed)
+        }
+        Err(env::VarError::NotPresent) => Ok(default),
+        Err(env::VarError::NotUnicode(_)) => Err(ConfigError::NonUnicodeValue(setting)),
+    }
+}
 
 impl Config {
     pub fn load() -> Result<Self, ConfigError> {
@@ -80,6 +125,45 @@ impl Config {
             bind_address,
             database_url,
             log_level,
+        })
+    }
+}
+
+impl WorkerConfig {
+    pub fn load() -> Result<Self, ConfigError> {
+        let concurrency = parse_env_i64(
+            "WORKER_CONCURRENCY",
+            2,
+            |v| v >= 1 && v <= 4,
+            "must be between 1 and 4 (pool has 5 max connections)",
+        )? as usize;
+
+        let poll_interval_ms = parse_env_i64(
+            "WORKER_POLL_INTERVAL_MS",
+            1000,
+            |v| v >= 100,
+            "must be >= 100",
+        )? as u64;
+
+        let lease_duration_secs = parse_env_i64(
+            "WORKER_LEASE_DURATION_SECS",
+            30,
+            |v| v >= 5,
+            "must be >= 5",
+        )?;
+
+        let shutdown_timeout_secs = parse_env_i64(
+            "WORKER_SHUTDOWN_TIMEOUT_SECS",
+            30,
+            |v| v >= 1,
+            "must be >= 1",
+        )? as u64;
+
+        Ok(Self {
+            concurrency,
+            poll_interval_ms,
+            lease_duration_secs,
+            shutdown_timeout_secs,
         })
     }
 }

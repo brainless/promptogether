@@ -5,7 +5,7 @@ mod error;
 mod routes;
 mod state;
 
-use config::Config;
+use config::{Config, WorkerConfig};
 use state::AppState;
 
 #[tokio::main]
@@ -92,8 +92,70 @@ async fn main() {
                 .await
                 .expect("server error");
         }
+        "worker" => {
+            let config = Config::load().unwrap_or_else(|err| {
+                eprintln!("error: {err}");
+                std::process::exit(1);
+            });
+
+            let worker_config = WorkerConfig::load().unwrap_or_else(|err| {
+                eprintln!("error: {err}");
+                std::process::exit(1);
+            });
+
+            init_tracing(&config.log_level);
+
+            let pool = db::create_pool(&config.database_url).await.unwrap_or_else(|err| {
+                eprintln!("error: failed to create database pool: {err}");
+                std::process::exit(1);
+            });
+
+            db::check_migrations(&pool).await.unwrap_or_else(|err| {
+                eprintln!("error: database schema is behind: {err}");
+                eprintln!("hint: run `backend migrate` to apply pending migrations");
+                std::process::exit(1);
+            });
+
+            domain::jobs_worker::run(pool, worker_config).await.unwrap_or_else(|err| {
+                eprintln!("error: worker failed: {err}");
+                std::process::exit(1);
+            });
+        }
+        "enqueue-fixture" => {
+            let should_fail = std::env::args().any(|a| a == "--fail");
+
+            let config = Config::load().unwrap_or_else(|err| {
+                eprintln!("error: {err}");
+                std::process::exit(1);
+            });
+
+            init_tracing(&config.log_level);
+
+            let pool = db::create_pool(&config.database_url).await.unwrap_or_else(|err| {
+                eprintln!("error: failed to create database pool: {err}");
+                std::process::exit(1);
+            });
+
+            db::run_migrations(&pool).await.unwrap_or_else(|err| {
+                eprintln!("error: failed to run migrations: {err}");
+                std::process::exit(1);
+            });
+
+            let repo = domain::jobs_repo::JobRepository::new(&pool);
+            let new_job = domain::jobs::enqueue(&domain::jobs::FixturePayload { should_fail })
+                .unwrap_or_else(|err| {
+                    eprintln!("error: failed to serialize payload: {err}");
+                    std::process::exit(1);
+                });
+            let id = repo.enqueue(&new_job).await.unwrap_or_else(|err| {
+                eprintln!("error: failed to enqueue job: {err}");
+                std::process::exit(1);
+            });
+
+            println!("{id}");
+        }
         other => {
-            eprintln!("error: unknown command \"{other}\"; expected: serve, migrate, bootstrap");
+            eprintln!("error: unknown command \"{other}\"; expected: serve, migrate, bootstrap, worker, enqueue-fixture");
             std::process::exit(2);
         }
     }
