@@ -1,0 +1,30 @@
+.page { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 0; border-bottom: 1px solid #deded3; }
+.brand { font-size: 19px; font-weight: 700; letter-spacing: -1px; text-decoration: none; }
+.brandAccent { font-weight: 400; }
+.startLink { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; font-weight: 600; text-underline-offset: 5px; }
+.startLink:hover { color: #3d674d; }
+.hero { padding: 72px 0 64px; }
+.eyebrow { margin: 0 0 24px; font-size: 11px; font-weight: 600; letter-spacing: 1.7px; text-transform: uppercase; color: #56624f; }
+.hero h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(43px, 8vw, 82px); font-weight: 400; line-height: 1.08; letter-spacing: -2px; }
+.hero h1 em { color: #3d674d; font-weight: 400; }
+.intro { max-width: 490px; margin: 28px 0 20px; font-size: 18px; line-height: 1.7; color: #555d52; }
+.note { font-size: 12px; line-height: 1.6; color: #65705e; }
+.section { padding: 44px 0; border-top: 1px solid #deded3; scroll-margin-top: 24px; }
+.section h2, .closing h2 { max-width: 600px; margin: 0 0 18px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(29px, 4vw, 39px); font-weight: 400; line-height: 1.2; letter-spacing: -0.7px; }
+.section > p:not(.eyebrow), .closing > p:not(.eyebrow) { max-width: 590px; margin: 0 0 16px; color: #555d52; font-size: 16px; line-height: 1.8; }
+.status { display: inline-block; margin-top: 8px; font-size: 12px; color: #65705e; }
+.closing { margin: 12px -12px 48px; padding: 36px 24px; background: #ecefe4; border-radius: 3px; }
+.footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 24px 0 32px; border-top: 1px solid #deded3; color: #65705e; font-size: 12px; line-height: 1.6; }
+.skipLink { position: absolute; left: 24px; top: -100px; padding: 12px; background: #f8f6f0; }
+.skipLink:focus { top: 12px; }
+
+@media (min-width: 640px) {
+  .page { padding: 0 48px; }
+  .header { padding: 28px 0; }
+  .brand { font-size: 23px; }
+  .startLink { font-size: 14px; }
+  .hero { padding: 96px 0 88px; }
+  .section { padding: 56px 0; }
+  .closing { margin: 16px 0 56px; padding: 44px; }
+}
