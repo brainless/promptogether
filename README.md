@@ -6,10 +6,11 @@ An inclusive platform for learning to build software with coding agents. Free to
 
 - `webapp/` -- SolidJS 2.0 frontend (TypeScript, Vite, CSS modules). See `webapp/README.md`.
 - `backend/` -- Rust API service (Axum, Tokio, tracing).
-- `api-types/` -- Shared request/response types used by `backend`.
+- `api-types/` -- Shared request/response types used by `backend`; the source of truth for the JSON contract.
+- `api-exporter/` -- Binary that generates the TypeScript bindings consumed by `webapp`.
 - `epics/` -- Planning and task-tracking documents.
 
-The root `Cargo.toml` defines a workspace containing `backend` and `api-types`.
+The root `Cargo.toml` defines a workspace containing `backend`, `api-types`, and `api-exporter`.
 
 ## Rust workspace
 
@@ -54,3 +55,23 @@ All settings are read from environment variables at startup. Invalid configurati
 | `GET` | `/api/ping` | Dev placeholder that includes the bind address in the response. |
 
 The server shuts down gracefully on SIGINT or SIGTERM.
+
+## Generated TypeScript API bindings
+
+`webapp/src/api/generated/` holds the TypeScript declarations for the shared
+API types, produced from the `api-types` crate by the `api-exporter` binary.
+They are generated and must **not be edited by hand**; change the types in
+`api-types`, then regenerate.
+
+One documented command (from the repository root) regenerates the complete
+TypeScript contract:
+
+```sh
+scripts/export-api-types.sh             # regenerate webapp/src/api/generated/
+scripts/export-api-types.sh check       # fail unless committed bindings are current
+```
+
+The `check` variant regenerates into a temporary directory and fails if the
+committed bindings are stale or nondeterministic, so it is safe for CI. Each
+generated file carries a header noting it is generated and must not be edited
+manually.
