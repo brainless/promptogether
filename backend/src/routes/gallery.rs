@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{rejection::PathRejection, Path, State},
     Json,
 };
 
@@ -73,8 +73,16 @@ pub async fn list_projects(
 
 pub async fn get_project(
     State(state): State<AppState>,
-    Path(slug): Path<String>,
+    path: Result<Path<String>, PathRejection>,
 ) -> Result<Json<GalleryProjectDetail>, AppError> {
+    let Path(slug) = path.map_err(|_| {
+        AppError::new(
+            axum::http::StatusCode::BAD_REQUEST,
+            "invalid_gallery_slug",
+            "Slug must be valid UTF-8.",
+        )
+    })?;
+
     validate_slug(&slug)?;
 
     let row: GalleryProjectRow = sqlx::query_as(
@@ -113,7 +121,13 @@ pub async fn get_project(
 
     for file in &files {
         if file.phase != "initial" && file.phase != "result" {
-            return Err(AppError::internal("Unknown file phase in gallery data."));
+            tracing::error!(
+                project_id = row.id,
+                file_id = file.id,
+                phase = %file.phase,
+                "unknown gallery file phase"
+            );
+            return Err(AppError::internal("An internal error occurred."));
         }
     }
 
