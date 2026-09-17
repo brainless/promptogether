@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -6,7 +5,7 @@ use sqlx::SqlitePool;
 use tokio::sync::watch;
 
 use crate::config::WorkerConfig;
-use crate::domain::jobs::{JobKind, JobRow};
+use crate::domain::jobs::{JobEnvelope, JobFailure, JobKind, JobRow};
 use crate::domain::jobs_lifecycle::{handle_job_outcome, JobLifecycleConfig};
 use crate::domain::jobs_repo::JobRepository;
 
@@ -58,37 +57,37 @@ pub async fn run(pool: SqlitePool, config: WorkerConfig) -> Result<(), WorkerErr
             break;
         }
 
+        let permit = tokio::select! {
+            _ = shutdown_rx.changed() => break,
+            permit = semaphore.clone().acquire_owned() => {
+                match permit {
+                    Ok(permit) => permit,
+                    Err(_) => break,
+                }
+            }
+        };
+
         match repo.claim(config.lease_duration_secs).await {
             Ok(Some(job)) => {
-                let permit = tokio::select! {
-                    _ = shutdown_rx.changed() => break,
-                    permit = semaphore.clone().acquire_owned() => {
-                        match permit {
-                            Ok(p) => p,
-                            Err(_) => break,
-                        }
-                    }
-                };
-
                 let pool_clone = pool.clone();
                 let config_clone = config.clone();
-                let mut rx = shutdown_rx.clone();
-
                 let handle = tokio::spawn(async move {
                     let _permit = permit;
-                    if let Err(err) = run_handler(pool_clone, job, config_clone, &mut rx).await {
+                    if let Err(err) = run_handler(pool_clone, job, config_clone).await {
                         tracing::error!(error = %err, "handler error");
                     }
                 });
                 handles.push(handle);
             }
             Ok(None) => {
+                drop(permit);
                 tokio::select! {
                     _ = shutdown_rx.changed() => break,
                     _ = tokio::time::sleep(Duration::from_millis(config.poll_interval_ms)) => {}
                 }
             }
             Err(err) => {
+                drop(permit);
                 tracing::error!(error = %err, "failed to claim job");
                 tokio::select! {
                     _ = shutdown_rx.changed() => break,
@@ -137,7 +136,6 @@ async fn run_handler(
     pool: SqlitePool,
     job: JobRow,
     config: WorkerConfig,
-    shutdown_rx: &mut watch::Receiver<bool>,
 ) -> Result<(), WorkerError> {
     let lease_token = match &job.lease_token {
         Some(token) => token.clone(),
@@ -157,44 +155,41 @@ async fn run_handler(
 
     let start = tokio::time::Instant::now();
 
-    let renewal_pool = pool.clone();
-    let renewal_token = lease_token.clone();
-    let renewal_id = job.id;
-    let renewal_duration = config.lease_duration_secs;
     let renewal_interval =
         Duration::from_secs((config.lease_duration_secs as u64 / 2).max(1));
-    let mut renewal_rx = shutdown_rx.clone();
+    let result = {
+        let handler = dispatch_job(&job);
+        tokio::pin!(handler);
+        let mut renewal_enabled = true;
 
-    let renewal_handle = tokio::spawn(async move {
         loop {
             tokio::select! {
-                _ = renewal_rx.changed() => break,
-                _ = tokio::time::sleep(renewal_interval) => {}
-            }
-            let repo = JobRepository::new(&renewal_pool);
-            match repo
-                .renew_lease(renewal_id, &renewal_token, renewal_duration)
-                .await
-            {
-                Ok(true) => {
-                    tracing::debug!(job_id = renewal_id, "lease renewed");
-                }
-                Ok(false) => {
-                    tracing::warn!(
-                        job_id = renewal_id,
-                        "lease renewal failed, job may have been reclaimed"
-                    );
-                    break;
-                }
-                Err(err) => {
-                    tracing::error!(error = %err, job_id = renewal_id, "failed to renew lease");
-                    break;
+                result = &mut handler => break result,
+                _ = tokio::time::sleep(renewal_interval), if renewal_enabled => {
+                    let repo = JobRepository::new(&pool);
+                    match repo
+                        .renew_lease(job.id, &lease_token, config.lease_duration_secs)
+                        .await
+                    {
+                        Ok(true) => {
+                            tracing::debug!(job_id = job.id, "lease renewed");
+                        }
+                        Ok(false) => {
+                            tracing::warn!(
+                                job_id = job.id,
+                                "lease renewal failed, job may have been reclaimed"
+                            );
+                            renewal_enabled = false;
+                        }
+                        Err(err) => {
+                            tracing::error!(error = %err, job_id = job.id, "failed to renew lease");
+                            renewal_enabled = false;
+                        }
+                    }
                 }
             }
         }
-    });
-
-    let result = dispatch_job(&job).await;
+    };
     let duration_ms = start.elapsed().as_millis() as u64;
 
     let outcome = if result.is_ok() { "completed" } else { "failed" };
@@ -216,22 +211,21 @@ async fn run_handler(
         "job finished"
     );
 
-    renewal_handle.abort();
-    let _ = renewal_handle.await;
-
     Ok(())
 }
 
-async fn dispatch_job(job: &JobRow) -> Result<(), String> {
+async fn dispatch_job(job: &JobRow) -> Result<(), JobFailure> {
     use crate::domain::jobs::FixturePayload;
 
-    let kind = JobKind::from_str(&job.kind).map_err(|e| e.to_string())?;
-    match kind {
+    let envelope = JobEnvelope::try_from_row(job.clone())
+        .map_err(|error| JobFailure::from(&error))?;
+    match envelope.kind() {
         JobKind::Fixture => {
-            let payload: FixturePayload =
-                serde_json::from_str(&job.payload).map_err(|e| e.to_string())?;
+            let payload: FixturePayload = envelope
+                .parse_payload()
+                .map_err(|error| JobFailure::from(&error))?;
             if payload.should_fail {
-                Err("fixture job intentionally failed".to_string())
+                Err(JobFailure::FixtureIntentionalFailure)
             } else {
                 tokio::time::sleep(Duration::from_secs(1)).await;
                 Ok(())

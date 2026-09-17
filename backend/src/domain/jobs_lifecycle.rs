@@ -1,7 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::domain::jobs::JobRow;
+use crate::domain::jobs::{JobFailure, JobRow};
 use crate::domain::jobs_repo::JobRepository;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -76,7 +76,7 @@ pub async fn handle_job_outcome(
     repo: &JobRepository,
     job: &JobRow,
     lease_token: &str,
-    result: Result<(), String>,
+    result: Result<(), JobFailure>,
     config: &JobLifecycleConfig,
 ) -> Result<(), sqlx::Error> {
     match result {
@@ -86,9 +86,9 @@ pub async fn handle_job_outcome(
         Err(error) => {
             if job.attempts < job.max_attempts {
                 let delay = backoff_delay(job.attempts as i32, config);
-                repo.retry(job.id, lease_token, delay, &error).await?;
+                repo.retry(job.id, lease_token, delay, error).await?;
             } else {
-                repo.terminal_failure(job.id, lease_token, &error).await?;
+                repo.terminal_failure(job.id, lease_token, error).await?;
             }
         }
     }

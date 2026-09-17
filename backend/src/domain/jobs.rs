@@ -67,6 +67,57 @@ pub enum JobError {
     PayloadDeserialization { kind: JobKind, version: i64, error: String },
 }
 
+/// Maximum size, in bytes, of a diagnostic stored in `jobs.last_error`.
+///
+/// Persisted diagnostics are selected from the allowlisted messages below. They
+/// intentionally exclude payload data, parser output, and handler-provided text,
+/// any of which may contain secrets. Detailed errors may be handled in memory,
+/// but must not cross this persistence boundary.
+pub const MAX_PERSISTED_JOB_ERROR_BYTES: usize = 128;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JobFailure {
+    UnknownKind,
+    UnsupportedPayloadVersion,
+    MalformedPayload,
+    FixtureIntentionalFailure,
+    HandlerFailure,
+    LeaseExpiredAfterMaximumAttempts,
+}
+
+impl JobFailure {
+    pub fn persisted_message(self) -> &'static str {
+        let message = match self {
+            Self::UnknownKind => "unknown job kind",
+            Self::UnsupportedPayloadVersion => "unsupported payload version",
+            Self::MalformedPayload => "malformed job payload",
+            Self::FixtureIntentionalFailure => "fixture job intentionally failed",
+            Self::HandlerFailure => "job handler failed",
+            Self::LeaseExpiredAfterMaximumAttempts => {
+                "lease expired after maximum attempts"
+            }
+        };
+
+        if message.len() <= MAX_PERSISTED_JOB_ERROR_BYTES {
+            message
+        } else {
+            // Preserve the storage bound even if a future allowlisted message is
+            // accidentally made too long. Never truncate possibly sensitive text.
+            "job failure"
+        }
+    }
+}
+
+impl From<&JobError> for JobFailure {
+    fn from(error: &JobError) -> Self {
+        match error {
+            JobError::UnknownKind(_) => Self::UnknownKind,
+            JobError::UnsupportedPayloadVersion { .. } => Self::UnsupportedPayloadVersion,
+            JobError::PayloadDeserialization { .. } => Self::MalformedPayload,
+        }
+    }
+}
+
 impl fmt::Display for JobError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -114,6 +165,10 @@ impl JobEnvelope {
     }
 
     pub fn validate_payload<P: JobPayload>(&self) -> Result<(), JobError> {
+        self.parse_payload::<P>().map(|_| ())
+    }
+
+    pub fn parse_payload<P: JobPayload>(&self) -> Result<P, JobError> {
         if self.kind != P::kind() {
             return Err(JobError::UnknownKind(self.row.kind.clone()));
         }
@@ -123,16 +178,6 @@ impl JobEnvelope {
                 version: self.row.payload_version,
             });
         }
-        serde_json::from_str::<P>(&self.row.payload).map_err(|e| JobError::PayloadDeserialization {
-            kind: self.kind.clone(),
-            version: self.row.payload_version,
-            error: e.to_string(),
-        })?;
-        Ok(())
-    }
-
-    pub fn parse_payload<P: JobPayload>(&self) -> Result<P, JobError> {
-        self.validate_payload::<P>()?;
         serde_json::from_str::<P>(&self.row.payload).map_err(|e| JobError::PayloadDeserialization {
             kind: self.kind.clone(),
             version: self.row.payload_version,

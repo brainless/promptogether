@@ -114,7 +114,15 @@ This command is for local development and testing only. Do not use it in product
 4. On success: the job is marked `completed`.
 5. On failure with attempts remaining: the job returns to `pending` with exponential backoff.
 6. On failure at max attempts: the job is marked `failed` (terminal).
-7. Expired leases are automatically reclaimed before each claim cycle.
+7. An expired lease is atomically reclaimed when attempts remain. If its final
+   allowed attempt expired, the job is marked `failed` instead of being run
+   beyond `max_attempts`.
+
+`jobs.last_error` contains only allowlisted, non-sensitive diagnostic categories
+(for example, `malformed job payload`), never payload values, parser output, or
+free-form handler errors. These messages are limited to 128 bytes. Add future
+handler failures to the typed `JobFailure` taxonomy rather than persisting raw
+error details.
 
 **Backoff formula:** `min(base_backoff * 2^(attempts-1), max_backoff)` where `base_backoff` = 1s and `max_backoff` = 300s.
 
