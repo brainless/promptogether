@@ -26,7 +26,7 @@ export default function GalleryProject() {
   return (
     <div class={styles.detail}>
       <a class={styles.backLink} href={paths.gallery}>
-        ← Back to gallery
+        ← All projects
       </a>
 
       <Errored

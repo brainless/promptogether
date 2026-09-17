@@ -1,6 +1,4 @@
-import type { GalleryProjectSummary } from "./generated/GalleryProjectSummary";
-import type { GalleryProjectDetail } from "./generated/GalleryProjectDetail";
-import type { ErrorResponse } from "./generated/ErrorResponse";
+import type { GalleryProjectSummary, GalleryProjectDetail, ErrorResponse } from "./generated";
 
 export class ApiError extends Error {
   constructor(
@@ -24,7 +22,13 @@ export class NotFoundError extends ApiError {
 const BASE = "/api";
 
 async function request<T>(path: string): Promise<T> {
-  const response = await fetch(`${BASE}${path}`);
+  let response: Response;
+
+  try {
+    response = await fetch(`${BASE}${path}`);
+  } catch {
+    throw new ApiError(0, "network_error", "Unable to reach the server. Please check your connection.");
+  }
 
   if (!response.ok) {
     let code = "unknown";
@@ -47,7 +51,11 @@ async function request<T>(path: string): Promise<T> {
     throw new ApiError(response.status, code, message, details);
   }
 
-  return response.json() as Promise<T>;
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new ApiError(0, "invalid_response", "Received an invalid response from the server.");
+  }
 }
 
 export function fetchGalleryProjects(): Promise<GalleryProjectSummary[]> {

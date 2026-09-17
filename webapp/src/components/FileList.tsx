@@ -1,7 +1,12 @@
 import { For, Show } from "solid-js";
-import type { GalleryProjectFile } from "../api/generated/GalleryProjectFile";
+import type { GalleryProjectFile } from "../api/generated";
 import FileViewer from "./FileViewer";
 import styles from "./FileList.module.css";
+
+function safeFileId(headingId: string, path: string): string {
+  const safePath = path.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return `${headingId}-${safePath}`;
+}
 
 export default function FileList(props: {
   title: string;
@@ -23,7 +28,7 @@ export default function FileList(props: {
             {(file) => (
               <a
                 class={styles.fileLink}
-                href={`#${props.headingId}-${file.path}`}
+                href={`#${safeFileId(props.headingId, file.path)}`}
               >
                 {file.path}
               </a>
@@ -33,7 +38,7 @@ export default function FileList(props: {
         <div class={styles.fileContents}>
           <For each={props.files}>
             {(file) => (
-              <div id={`${props.headingId}-${file.path}`}>
+              <div id={safeFileId(props.headingId, file.path)}>
                 <FileViewer file={file} />
               </div>
             )}

@@ -1,5 +1,5 @@
 import { createSignal, Show } from "solid-js";
-import type { GalleryProjectFile } from "../api/generated/GalleryProjectFile";
+import type { GalleryProjectFile } from "../api/generated";
 import styles from "./FileViewer.module.css";
 
 export default function FileViewer(props: { file: GalleryProjectFile }) {
@@ -11,14 +11,19 @@ export default function FileViewer(props: { file: GalleryProjectFile }) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(props.file.content);
       } else {
-        const textarea = document.createElement("textarea");
-        textarea.value = props.file.content;
-        textarea.style.position = "fixed";
-        textarea.style.left = "-9999px";
+      const textarea = document.createElement("textarea");
+      textarea.value = props.file.content;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      try {
         document.body.appendChild(textarea);
         textarea.select();
-        document.execCommand("copy");
+        if (!document.execCommand("copy")) {
+          throw new Error("Copy command failed");
+        }
+      } finally {
         document.body.removeChild(textarea);
+      }
       }
       showFeedback("Copied!");
     } catch {
