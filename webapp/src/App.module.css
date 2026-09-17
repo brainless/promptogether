@@ -2,8 +2,13 @@
 .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 0; border-bottom: 1px solid #deded3; }
 .brand { font-size: 19px; font-weight: 700; letter-spacing: -1px; text-decoration: none; }
 .brandAccent { font-weight: 400; }
+.nav { display: flex; align-items: center; gap: 20px; }
+.navLink { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; font-weight: 600; text-underline-offset: 5px; }
+.navLink:hover,
+.navLink:focus-visible { color: #3d674d; }
 .startLink { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; font-weight: 600; text-underline-offset: 5px; }
-.startLink:hover { color: #3d674d; }
+.startLink:hover,
+.startLink:focus-visible { color: #3d674d; }
 .hero { padding: 72px 0 64px; }
 .eyebrow { margin: 0 0 24px; font-size: 11px; font-weight: 600; letter-spacing: 1.7px; text-transform: uppercase; color: #56624f; }
 .hero h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(43px, 8vw, 82px); font-weight: 400; line-height: 1.08; letter-spacing: -2px; }
@@ -23,6 +28,7 @@
   .page { padding: 0 48px; }
   .header { padding: 28px 0; }
   .brand { font-size: 23px; }
+  .navLink { font-size: 14px; }
   .startLink { font-size: 14px; }
   .hero { padding: 96px 0 88px; }
   .section { padding: 56px 0; }

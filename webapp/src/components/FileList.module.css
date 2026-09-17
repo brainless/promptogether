@@ -1,0 +1,40 @@
+.section {
+  margin: 0 0 32px;
+}
+.sectionHeading {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.7px;
+  text-transform: uppercase;
+  color: #56624f;
+}
+.emptyMessage {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #65705e;
+}
+.fileNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 24px;
+}
+.fileLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  color: #3d674d;
+  text-decoration: none;
+  text-underline-offset: 5px;
+}
+.fileLink:hover,
+.fileLink:focus-visible {
+  text-decoration: underline;
+}
+.fileContents {
+  margin: 0;
+}
