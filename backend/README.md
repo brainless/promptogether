@@ -106,7 +106,7 @@ Seeds the gallery with curated prompt examples. The seed is convergent: repeated
 
 **Seed ownership:** The curated dataset lives in `backend/src/domain/gallery_seed.rs`. Each project is identified by a stable slug that must not change once published. The seed upserts by slug and (project_id, phase, path) without depending on internal numeric IDs.
 
-**Slug stability:** Gallery project slugs are lowercase ASCII kebab-case (e.g., `hello-rust-cli`). Once a slug is published, changing it creates a new project rather than renaming the existing one. A future dataset generator can perform the same transactional upsert by using the slug as the stable key.
+**Slug stability:** Gallery project slugs are lowercase ASCII kebab-case (e.g., `hello-rust-cli`). A valid slug is 1–100 characters long, uses only lowercase ASCII letters (`a-z`), digits (`0-9`), and hyphens (`-`), and must not start or end with a hyphen or contain consecutive hyphens (`--`). Once a slug is published, changing it creates a new project rather than renaming the existing one. A future dataset generator can perform the same transactional upsert by using the slug as the stable key.
 
 **Publication state:** Only projects with `publication_state = 'published'` are visible through the public API. Draft projects are never returned by `GET /api/gallery` or `GET /api/gallery/{slug}`. The seed command always sets projects to `published`.
 

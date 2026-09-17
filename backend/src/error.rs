@@ -48,8 +48,9 @@ impl IntoResponse for AppError {
     }
 }
 
-impl<E: std::fmt::Display> From<E> for AppError {
-    fn from(err: E) -> Self {
-        Self::internal(err.to_string())
+impl From<sqlx::Error> for AppError {
+    fn from(err: sqlx::Error) -> Self {
+        tracing::error!(?err, "database error");
+        Self::internal("An internal error occurred.")
     }
 }

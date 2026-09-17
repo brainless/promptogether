@@ -5,7 +5,7 @@ use axum::{
 
 use api_types::gallery::{GalleryProjectDetail, GalleryProjectSummary};
 
-use crate::domain::gallery::{project_detail, GalleryFileRow, GalleryProjectRow};
+use crate::domain::gallery::{project_detail, GalleryFileRow, GalleryProjectRow, GalleryProjectSummaryRow};
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -58,8 +58,8 @@ fn validate_slug(slug: &str) -> Result<(), AppError> {
 pub async fn list_projects(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<GalleryProjectSummary>>, AppError> {
-    let rows: Vec<GalleryProjectRow> = sqlx::query_as(
-        "SELECT id, slug, title, summary, prompt, publication_state, display_order, created_at, updated_at
+    let rows: Vec<GalleryProjectSummaryRow> = sqlx::query_as(
+        "SELECT slug, title, summary
          FROM gallery_projects
          WHERE publication_state = 'published'
          ORDER BY display_order ASC, slug ASC",

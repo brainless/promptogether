@@ -16,6 +16,13 @@ pub struct GalleryProjectRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct GalleryProjectSummaryRow {
+    pub slug: String,
+    pub title: String,
+    pub summary: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct GalleryFileRow {
     pub id: i64,
     pub project_id: i64,
@@ -28,6 +35,16 @@ pub struct GalleryFileRow {
 
 impl From<GalleryProjectRow> for GalleryProjectSummary {
     fn from(row: GalleryProjectRow) -> Self {
+        Self {
+            slug: row.slug,
+            title: row.title,
+            summary: row.summary,
+        }
+    }
+}
+
+impl From<GalleryProjectSummaryRow> for GalleryProjectSummary {
+    fn from(row: GalleryProjectSummaryRow) -> Self {
         Self {
             slug: row.slug,
             title: row.title,
