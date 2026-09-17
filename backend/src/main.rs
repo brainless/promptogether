@@ -154,8 +154,34 @@ async fn main() {
 
             println!("{id}");
         }
+        "seed-gallery" => {
+            let config = Config::load().unwrap_or_else(|err| {
+                eprintln!("error: {err}");
+                std::process::exit(1);
+            });
+
+            init_tracing(&config.log_level);
+
+            let pool = db::create_pool(&config.database_url).await.unwrap_or_else(|err| {
+                eprintln!("error: failed to create database pool: {err}");
+                std::process::exit(1);
+            });
+
+            db::check_migrations(&pool).await.unwrap_or_else(|err| {
+                eprintln!("error: database schema is behind: {err}");
+                eprintln!("hint: run `backend migrate` to apply pending migrations");
+                std::process::exit(1);
+            });
+
+            let summary = domain::gallery_seed::seed(&pool).await.unwrap_or_else(|err| {
+                eprintln!("error: failed to seed gallery: {err}");
+                std::process::exit(1);
+            });
+
+            println!("seed complete: {} project(s) upserted, {} file(s) upserted, {} file(s) removed", summary.projects_upserted, summary.files_upserted, summary.files_removed);
+        }
         other => {
-            eprintln!("error: unknown command \"{other}\"; expected: serve, migrate, bootstrap, worker, enqueue-fixture");
+            eprintln!("error: unknown command \"{other}\"; expected: serve, migrate, bootstrap, worker, enqueue-fixture, seed-gallery");
             std::process::exit(2);
         }
     }

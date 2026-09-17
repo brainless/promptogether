@@ -1,4 +1,5 @@
 pub mod gallery;
+pub mod gallery_seed;
 pub mod jobs;
 pub mod jobs_lifecycle;
 pub mod jobs_repo;

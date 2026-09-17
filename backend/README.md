@@ -20,6 +20,7 @@ cargo run -- serve
 | `cargo run -- serve` | Start the API server (fails if migrations are pending). |
 | `cargo run -- worker` | Start the background worker (polls and processes jobs). |
 | `cargo run -- enqueue-fixture` | Enqueue a dev-only fixture job. Pass `--fail` for a failing job. |
+| `cargo run -- seed-gallery` | Seed the gallery with curated prompt examples. |
 
 `serve` is the default when no subcommand is given.
 
@@ -94,6 +95,20 @@ cargo run -p backend -- worker
 The worker polls the `jobs` table for pending work, claims jobs with a lease, and processes them concurrently up to `WORKER_CONCURRENCY`. It requires migrations to be applied first (same as `serve`).
 
 The worker shuts down gracefully on SIGINT or SIGTERM: it stops claiming new jobs and waits up to `WORKER_SHUTDOWN_TIMEOUT_SECS` for in-flight handlers to finish.
+
+## Seed gallery command
+
+```sh
+cargo run -p backend -- seed-gallery
+```
+
+Seeds the gallery with curated prompt examples. The seed is convergent: repeated runs update changed fields, remove files deleted from the curated definitions, and leave unrelated projects untouched. Requires migrations to be applied first (same as `serve`).
+
+**Seed ownership:** The curated dataset lives in `backend/src/domain/gallery_seed.rs`. Each project is identified by a stable slug that must not change once published. The seed upserts by slug and (project_id, phase, path) without depending on internal numeric IDs.
+
+**Slug stability:** Gallery project slugs are lowercase ASCII kebab-case (e.g., `hello-rust-cli`). Once a slug is published, changing it creates a new project rather than renaming the existing one. A future dataset generator can perform the same transactional upsert by using the slug as the stable key.
+
+**Publication state:** Only projects with `publication_state = 'published'` are visible through the public API. Draft projects are never returned by `GET /api/gallery` or `GET /api/gallery/{slug}`. The seed command always sets projects to `published`.
 
 ## Enqueue fixture command
 

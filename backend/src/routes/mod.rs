@@ -1,3 +1,4 @@
+mod gallery;
 mod health;
 mod ping;
 
@@ -9,4 +10,6 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/ping", get(ping::ping))
         .route("/api/health", get(health::health))
+        .route("/api/gallery", get(gallery::list_projects))
+        .route("/api/gallery/{slug}", get(gallery::get_project))
 }
