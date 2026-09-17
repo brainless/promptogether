@@ -1,10 +1,34 @@
-import { createMemo, createSignal, Show, Loading, Errored, onSettled } from "solid-js";
+import { createEffect, createMemo, createSignal, Show, Loading, Errored } from "solid-js";
 import { useParams } from "@solidjs/router";
 import { fetchGalleryProject, NotFoundError } from "../api/client";
+import type { GalleryProjectDetail } from "../api/generated";
 import { paths } from "../router";
-import { consumeGalleryProjectFocus } from "../focus-routing";
+import { useGalleryProjectFocusRouting } from "../focus-routing";
 import FileList from "../components/FileList";
 import styles from "./GalleryProject.module.css";
+
+function FocusProjectHeading(props: {
+  project: GalleryProjectDetail;
+  heading: () => HTMLHeadingElement | undefined;
+}) {
+  const focusRouting = useGalleryProjectFocusRouting();
+
+  createEffect(
+    () => {
+      const request = focusRouting.request();
+      return request?.slug === props.project.slug ? request : null;
+    },
+    (request) => {
+      const heading = props.heading();
+      if (request && heading?.isConnected) {
+        heading.focus();
+        focusRouting.consume(request);
+      }
+    },
+  );
+
+  return null;
+}
 
 export default function GalleryProject() {
   const params = useParams<{ slug: string }>();
@@ -15,13 +39,7 @@ export default function GalleryProject() {
     return fetchGalleryProject(params.slug);
   });
 
-  let headingRef!: HTMLHeadingElement;
-
-  onSettled(() => {
-    if (consumeGalleryProjectFocus()) {
-      headingRef.focus();
-    }
-  });
+  let headingRef: HTMLHeadingElement | undefined;
 
   return (
     <div class={styles.detail}>
@@ -64,6 +82,7 @@ export default function GalleryProject() {
       >
         <Loading fallback={<p class={styles.loading}>Loading project…</p>}>
           <h1 class={styles.title} ref={headingRef} tabindex={-1}>{detail().title}</h1>
+          <FocusProjectHeading project={detail()} heading={() => headingRef} />
           <p class={styles.summary}>{detail().summary}</p>
 
           <section class={styles.section} aria-labelledby="prompt-heading">

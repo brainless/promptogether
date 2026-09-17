@@ -3,9 +3,11 @@ import type { GalleryProjectFile } from "../api/generated";
 import FileViewer from "./FileViewer";
 import styles from "./FileList.module.css";
 
-function safeFileId(headingId: string, path: string): string {
-  const safePath = path.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return `${headingId}-${safePath}`;
+function fileFragmentId(headingId: string, path: string, index: number): string {
+  const safePath =
+    path.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "") || "file";
+
+  return `${headingId}-file-${index + 1}-${safePath}`;
 }
 
 export default function FileList(props: {
@@ -25,10 +27,10 @@ export default function FileList(props: {
       >
         <nav class={styles.fileNav} aria-label={`${props.title} files`}>
           <For each={props.files}>
-            {(file) => (
+            {(file, index) => (
               <a
                 class={styles.fileLink}
-                href={`#${safeFileId(props.headingId, file.path)}`}
+                href={`#${fileFragmentId(props.headingId, file.path, index())}`}
               >
                 {file.path}
               </a>
@@ -37,8 +39,8 @@ export default function FileList(props: {
         </nav>
         <div class={styles.fileContents}>
           <For each={props.files}>
-            {(file) => (
-              <div id={safeFileId(props.headingId, file.path)}>
+            {(file, index) => (
+              <div id={fileFragmentId(props.headingId, file.path, index())}>
                 <FileViewer file={file} />
               </div>
             )}
