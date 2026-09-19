@@ -7,16 +7,16 @@
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
-  color: #555d52;
+  color: var(--color-text-secondary);
   text-underline-offset: 5px;
 }
 .backLink:hover,
 .backLink:focus-visible {
-  color: #3d674d;
+  color: var(--color-accent);
 }
 .title {
   margin: 0 0 8px;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-heading);
   font-size: clamp(29px, 4vw, 39px);
   font-weight: 400;
   line-height: 1.2;
@@ -26,7 +26,7 @@
   margin: 0 0 32px;
   font-size: 16px;
   line-height: 1.7;
-  color: #555d52;
+  color: var(--color-text-secondary);
 }
 .section {
   margin: 0 0 32px;
@@ -37,22 +37,22 @@
   font-weight: 600;
   letter-spacing: 1.7px;
   text-transform: uppercase;
-  color: #56624f;
+  color: var(--color-accent-label);
 }
 .prompt {
   margin: 0;
   padding: 20px 24px;
   font-size: 14px;
   line-height: 1.8;
-  color: #555d52;
-  background: #ecefe4;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-subtle);
   border-radius: 3px;
   white-space: pre-wrap;
 }
 .loading {
   padding: 48px 0;
   font-size: 14px;
-  color: #65705e;
+  color: var(--color-text-muted);
 }
 .error {
   padding: 32px 0;
@@ -61,7 +61,7 @@
   margin: 0 0 16px;
   font-size: 14px;
   line-height: 1.6;
-  color: #555d52;
+  color: var(--color-text-secondary);
 }
 .retryButton {
   display: inline-flex;
@@ -70,22 +70,22 @@
   padding: 0 20px;
   font-size: 13px;
   font-weight: 600;
-  color: #f8f6f0;
-  background: #3d674d;
+  color: var(--color-bg);
+  background: var(--color-accent);
   border: none;
   border-radius: 3px;
   cursor: pointer;
 }
 .retryButton:hover,
 .retryButton:focus-visible {
-  background: #2d5239;
+  background: var(--color-accent-hover);
 }
 .notFound {
   padding: 48px 0;
 }
 .notFoundHeading {
   margin: 0 0 8px;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-heading);
   font-size: clamp(29px, 4vw, 39px);
   font-weight: 400;
   line-height: 1.2;
@@ -95,7 +95,7 @@
   margin: 0 0 24px;
   font-size: 16px;
   line-height: 1.7;
-  color: #555d52;
+  color: var(--color-text-secondary);
 }
 .notFoundLink {
   display: inline-flex;
@@ -104,10 +104,10 @@
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
-  color: #3d674d;
+  color: var(--color-accent);
   text-underline-offset: 5px;
 }
 .notFoundLink:hover,
 .notFoundLink:focus-visible {
-  color: #2d5239;
+  color: var(--color-accent-hover);
 }

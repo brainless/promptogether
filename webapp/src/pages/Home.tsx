@@ -1,48 +1,64 @@
 import styles from "../App.module.css";
+import GalleryPreview from "../components/GalleryPreview";
+
+const YOUTUBE_VIDEO_ID = "YOUR_VIDEO_ID_HERE";
 
 export default function Home() {
   return (
     <>
       <section class={styles.hero} aria-labelledby="welcome-title">
-        <p class={styles.eyebrow}>A little curiosity goes a long way</p>
-        <h1 id="welcome-title">Build something<br />of your own.<br /><em>Learn together.</em></h1>
-        <p class={styles.intro}>An open place to learn how to build software with coding agents. Bring an idea, a question, or just yourself.</p>
-        <p class={styles.note}>Free to explore. No registration needed.</p>
+        <p class={styles.eyebrow}>Build what you need</p>
+        <h1 id="welcome-title">Turn your ideas<br />into software.<br /><em>We'll show you how.</em></h1>
+        <p class={styles.intro}>Learn to build the tools, apps, and automations you actually need—no coding background required. Prompt Together helps you go from idea to working software with coding agents.</p>
       </section>
 
+      <section class={styles.videoSection} aria-labelledby="video-title">
+        <h2 id="video-title" class={styles.srOnly}>Video introduction</h2>
+        <div class={styles.videoContainer}>
+          <iframe
+            src={`https://www.youtube.com/embed/6WvyIpyxEVU`}
+            title="Prompt Together introduction"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          />
+        </div>
+      </section>
+
+      <GalleryPreview />
+
       <section class={styles.section} id="start-a-project" aria-labelledby="start-title" tabindex="-1">
-        <p class={styles.eyebrow}>01 / Start small</p>
-        <h2 id="start-title">Your idea is a good place to start.</h2>
-        <p>A tool for your everyday life. A website for your business. Something you wish existed. Start by putting it into a sentence: "I want to build ___ to help ___."</p>
-        <p>We're creating guided tours to take you from that first idea to building with a coding agent, one step at a time. No coding experience assumed.</p>
+        <p class={styles.eyebrow}>01 / Build what matters to you</p>
+        <h2 id="start-title">Start with something useful.</h2>
+        <p>A budget tracker for your side business. An invoice generator for your freelance work. A scheduling tool for your team. A personal finance dashboard. Start with the problem you want to solve—we'll help you build it.</p>
+        <p>Guided tours walk you through building real software with a coding agent, step by step. No experience needed.</p>
         <span class={styles.status}>Guided tours · Coming soon</span>
       </section>
 
       <section class={styles.section} aria-labelledby="community-title">
-        <p class={styles.eyebrow}>02 / Find your people</p>
-        <h2 id="community-title">You don't have to figure it out alone.</h2>
-        <p>Share what you're trying, see what others are building, and learn from the experiments along the way. There's room here for first attempts and work in progress.</p>
+        <p class={styles.eyebrow}>02 / Learn from others building too</p>
+        <h2 id="community-title">See what's possible.</h2>
+        <p>Browse projects others have built—small business tools, personal productivity apps, finance trackers, and more. Share your own builds, ask questions, and learn from a community of people making software for real life.</p>
         <span class={styles.status}>Community forum · Coming soon</span>
       </section>
 
       <section class={styles.section} aria-labelledby="questions-title">
-        <p class={styles.eyebrow}>03 / Ask away</p>
-        <h2 id="questions-title">Every question belongs.</h2>
-        <p>Unfamiliar words, unexpected errors, or a simple "where do I begin?" A shared Q&A will help you find answers and leave something useful for the next person.</p>
+        <p class={styles.eyebrow}>03 / Get unstuck fast</p>
+        <h2 id="questions-title">Every question gets you closer.</h2>
+        <p>Confused by an error? Not sure which tool to use? Ask anything. Our Q&A is built to help you move forward and leave answers that help the next person too.</p>
         <span class={styles.status}>Questions & answers · Coming soon</span>
       </section>
 
       <section class={styles.section} aria-labelledby="help-title">
-        <p class={styles.eyebrow}>04 / Keep going</p>
-        <h2 id="help-title">A little help when you're stuck.</h2>
-        <p>We're exploring live AI help to work through issues with you, explain what's happening, and help you find your next step.</p>
+        <p class={styles.eyebrow}>04 / Keep building</p>
+        <h2 id="help-title">AI help when you're stuck.</h2>
+        <p>Get interactive help from AI to debug issues, explain what's happening, and find your next step. We're building this to keep you moving when you hit a wall.</p>
         <span class={styles.status}>Live AI help · In exploration</span>
       </section>
 
       <section class={styles.closing} aria-labelledby="closing-title">
-        <p class={styles.eyebrow}>A space we're growing together</p>
-        <h2 id="closing-title">Curiosity is the only prerequisite.</h2>
-        <p>Born from coding agent experiments and learning sessions with hundreds of people. Prompt Together is just getting started. What we learn together will shape what comes next.</p>
+        <p class={styles.eyebrow}>Empowering builders everywhere</p>
+        <h2 id="closing-title">The tools you need, built by you.</h2>
+        <p>Built from hands-on learning sessions with hundreds of people. Prompt Together exists because everyone deserves the power to create their own software—whether it's for your business, your finances, or your daily life.</p>
       </section>
     </>
   );

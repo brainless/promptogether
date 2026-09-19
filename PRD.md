@@ -1,8 +1,8 @@
 # Prompt Together — High-Level Product Requirements
 
-**Project:** promptogether (Prompt Together)  
-**Website:** https://promptogether.com  
-**Repository:** git@github.com:brainless/promptogether.git  
+**Project:** `promptogether` (Prompt Together)  
+**Website:** `https://promptogether.com`
+**Repository:** `git@github.com:brainless/promptogether.git`
 **Status:** Initial direction; features and scope will evolve through experimentation and community feedback.
 
 ## Vision

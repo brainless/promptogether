@@ -7,13 +7,13 @@
   font-weight: 600;
   letter-spacing: 1.7px;
   text-transform: uppercase;
-  color: #56624f;
+  color: var(--color-accent-label);
 }
 .emptyMessage {
   margin: 0;
   font-size: 14px;
   line-height: 1.6;
-  color: #65705e;
+  color: var(--color-text-muted);
 }
 .fileNav {
   display: flex;
@@ -25,9 +25,9 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
-  color: #3d674d;
+  color: var(--color-accent);
   text-decoration: none;
   text-underline-offset: 5px;
 }

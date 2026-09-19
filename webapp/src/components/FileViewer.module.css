@@ -13,11 +13,11 @@
   font-weight: 600;
   letter-spacing: 1.7px;
   text-transform: uppercase;
-  color: #56624f;
+  color: var(--color-accent-label);
 }
 .language {
   font-size: 12px;
-  color: #65705e;
+  color: var(--color-text-muted);
 }
 .codeWrapper {
   position: relative;
@@ -30,26 +30,26 @@
   padding: 0 16px;
   font-size: 12px;
   font-weight: 600;
-  color: #555d52;
-  background: #f8f6f0;
-  border: 1px solid #deded3;
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: 3px;
   cursor: pointer;
   z-index: 1;
 }
 .copyButton:hover,
 .copyButton:focus-visible {
-  color: #3d674d;
-  border-color: #3d674d;
+  color: var(--color-accent);
+  border-color: var(--color-accent);
 }
 .codeBlock {
   margin: 0;
   padding: 20px 24px;
-  font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.7;
-  color: #282f29;
-  background: #ecefe4;
+  color: var(--color-text);
+  background: var(--color-bg-subtle);
   border-radius: 3px;
   white-space: pre;
   overflow-x: auto;

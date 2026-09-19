@@ -77,13 +77,13 @@ function isGalleryProjectFile(value: unknown): value is GalleryProjectFile {
 function isGalleryProjectDetail(value: unknown): value is GalleryProjectDetail {
   return (
     isGalleryProjectSummary(value) &&
-    typeof value.prompt === "string" &&
-    typeof value.createdAt === "string" &&
-    typeof value.updatedAt === "string" &&
-    Array.isArray(value.initialFiles) &&
-    value.initialFiles.every(isGalleryProjectFile) &&
-    Array.isArray(value.resultFiles) &&
-    value.resultFiles.every(isGalleryProjectFile)
+    typeof (value as GalleryProjectDetail).prompt === "string" &&
+    typeof (value as GalleryProjectDetail).createdAt === "string" &&
+    typeof (value as GalleryProjectDetail).updatedAt === "string" &&
+    Array.isArray((value as GalleryProjectDetail).initialFiles) &&
+    (value as GalleryProjectDetail).initialFiles.every(isGalleryProjectFile) &&
+    Array.isArray((value as GalleryProjectDetail).resultFiles) &&
+    (value as GalleryProjectDetail).resultFiles.every(isGalleryProjectFile)
   );
 }
 

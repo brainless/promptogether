@@ -22,7 +22,7 @@ export default function App(props: { children?: JSX.Element }) {
 
       <footer class={styles.footer}>
         <span>Prompt Together</span>
-        <span>For the things you want to make.</span>
+        <span>Build what you need.</span>
       </footer>
     </div>
   );
