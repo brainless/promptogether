@@ -3,11 +3,14 @@
 //! Sends the raw transcript to a separate text agent with a dedicated,
 //! version-controlled system prompt (`prompts/cleanup_system_prompt.txt`,
 //! compiled into the binary via `include_str!` so the tool always ships
-//! with its own prompt). The prompt allows only spelling and grammar
-//! corrections plus paragraph breaks, and explicitly prohibits
-//! summarizing, shortening, expanding, translating, changing tone or
-//! meaning, adding headings, adding facts, or converting the speaker's
-//! words into an article.
+//! with its own prompt). The prompt allows spelling and grammar
+//! corrections, paragraph breaks, and removal of a narrow, explicitly
+//! enumerated set of verbal crutch words and disfluencies (filler words
+//! like "so"/"um"/"uh"/"you know", stutter-style word repeats, and
+//! redundant "maybe" hedges). It explicitly prohibits summarizing,
+//! shortening, expanding, translating, changing tone or meaning, adding
+//! headings, adding facts, or converting the speaker's words into an
+//! article.
 //!
 //! Per the epic's decision, this stage reuses the same Xiaomi client and
 //! MiMo V2.5 chat model (not the ASR model) as the transcription stage, and
@@ -220,6 +223,15 @@ mod tests {
     {
         assert!(SYSTEM_PROMPT
             .contains("Do not summarize, paraphrase, reorganize, censor, embellish, or add facts"));
+    }
+
+    #[test]
+    fn prompt_permits_removing_filler_words_and_disfluencies() {
+        assert!(SYSTEM_PROMPT.contains("Remove verbal crutch words and disfluencies"));
+        assert!(SYSTEM_PROMPT.contains("\"so\" as"));
+        assert!(SYSTEM_PROMPT.contains("Stutter-style repetitions"));
+        assert!(SYSTEM_PROMPT.contains("Redundant \"maybe\" hedges"));
+        assert!(SYSTEM_PROMPT.contains("Do not remove any other words"));
     }
 
     #[test]
