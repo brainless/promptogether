@@ -217,7 +217,7 @@ pub async fn transcribe(audio_path: &Path, api_key: &str) -> Result<String, Tran
     let response = client
         .speech_recognition_builder()
         .model(MIMO_V2_5_ASR)
-        .audio_base64(encoded, XiaomiAudioFormat::Wav)
+        .audio_base64(encoded, XiaomiAudioFormat::Mp3)
         .language(XiaomiAsrLanguage::En)
         .send()
         .await

@@ -14,8 +14,9 @@ visitor-facing upload or transcription feature.
 ## Setup
 
 1. **Install `ffmpeg` and make sure it's on `PATH`.** The audio stage invokes
-   the `ffmpeg` binary directly (no shell) to extract mono, 16 kHz WAV audio
-   from the source video. Verify it's available before running the CLI:
+   the `ffmpeg` binary directly (no shell) to extract 128 kbps MP3 audio
+   (`libmp3lame`) from the source video. Verify it's available before running
+   the CLI:
 
    ```sh
    ffmpeg -version
@@ -70,8 +71,11 @@ you can also run it directly as `video-to-markdown`:
 What happens, in order:
 
 1. **Audio extraction.** The video is validated as a readable file, `ffmpeg`
-   is confirmed to be on `PATH`, and a mono, 16 kHz WAV file is extracted
-   into a per-run temporary workspace (never overwriting the source video).
+   is confirmed to be on `PATH`, and a 128 kbps MP3 file is extracted
+   (`ffmpeg -vn -c:a libmp3lame -b:a 128k`) into a per-run temporary
+   workspace (never overwriting the source video). MP3 was chosen over
+   uncompressed WAV because it keeps longer recordings well under the
+   provider's 10 MB Base64 size limit below.
 2. **ASR transcription.** The extracted audio is Base64-encoded, checked
    against the provider's 10 MB request-size limit, and sent to MiMo V2.5
    ASR via `llm-sdk`'s Xiaomi client to produce a raw transcript.

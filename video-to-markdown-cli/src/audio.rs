@@ -2,7 +2,7 @@
 //!
 //! Accepts the video path from the CLI, validates that it is a readable
 //! file, verifies that `ffmpeg` is available, and invokes it without a
-//! shell to produce a MiMo-compatible WAV file in a per-run temporary
+//! shell to produce a MiMo-compatible MP3 file in a per-run temporary
 //! workspace. Reports a missing executable, unsupported or corrupt input,
 //! and a failed process with useful context, and never overwrites the
 //! source video.
@@ -22,7 +22,7 @@ use tempfile::TempDir;
 /// this struct alive until the audio has been consumed by the
 /// transcription stage.
 pub struct ExtractedAudio {
-    /// Path to the extracted WAV audio file inside the temporary workspace.
+    /// Path to the extracted MP3 audio file inside the temporary workspace.
     pub path: PathBuf,
     _workspace: TempDir,
 }
@@ -144,16 +144,20 @@ fn verify_ffmpeg_available() -> Result<(), AudioError> {
 /// workspace, returning the extracted audio's path alongside the workspace
 /// guard that owns it.
 ///
-/// The output is mono, 16 kHz WAV: a deliberate choice for spoken-word ASR
-/// that keeps requests small (relevant to the provider's Base64 size limit)
-/// while remaining well within MiMo V2.5 ASR's accepted WAV/MP3 formats.
+/// The output is MP3 encoded with `libmp3lame` at a 128 kbps constant
+/// bitrate: a deliberate choice to keep requests well under the provider's
+/// 10 MB Base64-encoded size limit for longer recordings, while remaining
+/// well within MiMo V2.5 ASR's accepted WAV/MP3 formats and more than
+/// sufficient quality for spoken-word transcription. An uncompressed WAV
+/// extraction was tried first but exceeded the limit on longer videos;
+/// 128 kbps MP3 keeps the same source video under half that size.
 pub fn extract_audio(video_path: &Path) -> Result<ExtractedAudio, AudioError> {
     validate_video_path(video_path)?;
     verify_ffmpeg_available()?;
 
     let workspace = TempDir::with_prefix("video-to-markdown-")
         .map_err(|err| AudioError::TempWorkspace(err.to_string()))?;
-    let output_path = workspace.path().join("audio.wav");
+    let output_path = workspace.path().join("audio.mp3");
 
     let output = Command::new("ffmpeg")
         .arg("-hide_banner")
@@ -164,12 +168,10 @@ pub fn extract_audio(video_path: &Path) -> Result<ExtractedAudio, AudioError> {
         .arg("-i")
         .arg(video_path)
         .arg("-vn")
-        .arg("-ac")
-        .arg("1")
-        .arg("-ar")
-        .arg("16000")
-        .arg("-f")
-        .arg("wav")
+        .arg("-c:a")
+        .arg("libmp3lame")
+        .arg("-b:a")
+        .arg("128k")
         .arg(&output_path)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -256,7 +258,7 @@ mod tests {
 
     /// Real smoke test: only runs when `ffmpeg` is on PATH. Generates a
     /// tiny synthetic test video with `ffmpeg`'s `lavfi` inputs and checks
-    /// that `extract_audio` produces a non-empty mono 16 kHz WAV file.
+    /// that `extract_audio` produces a non-empty 128 kbps MP3 file.
     #[test]
     fn extracts_audio_from_a_real_synthetic_video_when_ffmpeg_is_available() {
         if !ffmpeg_available() {
@@ -295,7 +297,7 @@ mod tests {
         assert!(extracted
             .path
             .extension()
-            .map(|ext| ext == "wav")
+            .map(|ext| ext == "mp3")
             .unwrap_or(false));
     }
 
