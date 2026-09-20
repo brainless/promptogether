@@ -33,9 +33,22 @@ visitor-facing upload or transcription feature.
    export XIAOMI_API_KEY="..."
    ```
 
+   Alternatively, create a `.env` file at the **repository root** (not inside
+   `video-to-markdown-cli/`):
+
+   ```sh
+   # .env (repository root)
+   XIAOMI_API_KEY=your-key-here
+   ```
+
+   The CLI loads it automatically on startup, before reading any environment
+   variables. A variable already exported in your shell always takes
+   precedence over the same name in `.env`. `.env` is listed in the repo's
+   `.gitignore` — never commit it.
+
 | Variable | Description | Required |
 |----------|--------------|----------|
-| `XIAOMI_API_KEY` | Xiaomi API key used for both MiMo V2.5 ASR (transcription) and the MiMo V2.5 chat cleanup stage. Read once per run and reused for both calls. | Yes |
+| `XIAOMI_API_KEY` | Xiaomi API key used for both MiMo V2.5 ASR (transcription) and the MiMo V2.5 chat cleanup stage. Read once per run and reused for both calls. May be set in the shell environment or in a repository-root `.env` file. | Yes |
 
 ## A normal run
 

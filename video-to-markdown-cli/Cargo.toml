@@ -10,6 +10,7 @@ path = "src/main.rs"
 [dependencies]
 base64 = "0.22"
 clap = { version = "4", features = ["derive"] }
+dotenvy = "0.15"
 llm-sdk = { git = "https://github.com/brainless/llm-sdk", rev = "35e3a52ea8745b324635e9eb69d3c8084d812f10" }
 tempfile = "3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
