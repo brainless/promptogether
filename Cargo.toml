@@ -1,3 +1,3 @@
 [workspace]
-members = ["backend", "api-types"]
+members = ["backend", "api-types", "video-to-markdown-cli"]
 resolver = "2"
