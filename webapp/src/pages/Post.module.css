@@ -1,0 +1,61 @@
+.post {
+  padding: 44px 0;
+}
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--color-text-secondary);
+  text-underline-offset: 5px;
+}
+.backLink:hover,
+.backLink:focus-visible {
+  color: var(--color-accent);
+}
+.date {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-accent-label);
+}
+.title {
+  margin: 0 0 32px;
+  font-family: var(--font-heading);
+  font-size: clamp(29px, 4vw, 39px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.7px;
+}
+.body {
+  max-width: 680px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--color-text-secondary);
+}
+.body p {
+  margin: 0 0 20px;
+}
+.body h2,
+.body h3 {
+  margin: 32px 0 12px;
+  font-family: var(--font-heading);
+  color: var(--color-text);
+}
+.body a {
+  color: var(--color-accent);
+}
+.body pre {
+  padding: 16px 20px;
+  overflow-x: auto;
+  background: var(--color-bg-subtle);
+  border-radius: 3px;
+}
+.notFound {
+  padding: 48px 0;
+}

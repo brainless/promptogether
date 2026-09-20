@@ -1,0 +1,124 @@
+/*
+ * Styles for the pre-rendered (pre-JavaScript) markup of /posts pages only.
+ * Solid replaces this markup once it mounts, so these rules only matter to
+ * crawlers and users viewing the page before/without JS. Deliberately kept
+ * separate from the app's CSS-module styles (those get content-hashed
+ * class names at build time that this static HTML can't reference).
+ */
+.pt-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.pt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.pt-brand {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  text-decoration: none;
+}
+.pt-nav {
+  display: flex;
+  gap: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pt-nav a {
+  text-decoration: none;
+}
+.pt-main {
+  padding: 44px 0;
+}
+.pt-back {
+  display: inline-block;
+  margin-bottom: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+.pt-date {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-accent-label);
+}
+.pt-title {
+  margin: 0 0 32px;
+  font-family: var(--font-heading);
+  font-size: clamp(29px, 4vw, 39px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.7px;
+}
+.pt-video {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+  height: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  margin: 0 0 32px;
+}
+.pt-video iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.pt-body {
+  max-width: 680px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--color-text-secondary);
+}
+.pt-body p {
+  margin: 0 0 20px;
+}
+.pt-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pt-list li {
+  border-top: 1px solid var(--color-border);
+  padding: 20px 0;
+}
+.pt-list li:last-child {
+  border-bottom: 1px solid var(--color-border);
+}
+.pt-list a {
+  text-decoration: none;
+  color: inherit;
+}
+.pt-list h2 {
+  margin: 0 0 4px;
+  font-size: 19px;
+  font-weight: 600;
+}
+.pt-list p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+.pt-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px 0 32px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
