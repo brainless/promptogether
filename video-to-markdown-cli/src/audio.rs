@@ -22,10 +22,16 @@ use tempfile::TempDir;
 /// this struct alive until the audio has been consumed by the
 /// transcription stage.
 pub struct ExtractedAudio {
-    /// Path to the extracted MP3 audio file inside the temporary workspace.
-    pub path: PathBuf,
+    /// Ordered paths to the extracted MP3 chunks inside the temporary workspace.
+    pub paths: Vec<PathBuf>,
     _workspace: TempDir,
 }
+
+const SILENCE_THRESHOLD: &str = "-35dB";
+const MIN_SILENCE_SECS: f64 = 0.6;
+const MIN_CHUNK_SECS: f64 = 75.0;
+const TARGET_CHUNK_SECS: f64 = 120.0;
+const MAX_CHUNK_SECS: f64 = 150.0;
 
 /// Errors that can occur while extracting audio from a source video.
 #[derive(Debug)]
@@ -42,9 +48,10 @@ pub enum AudioError {
     FfmpegSpawnFailed(String),
     /// `ffmpeg` exited with a non-zero status.
     FfmpegFailed { status: Option<i32>, stderr: String },
-    /// `ffmpeg` exited successfully but did not produce the expected
-    /// output file, which usually indicates unsupported or corrupt input.
+    /// `ffmpeg` exited successfully but did not produce any audio chunks.
     OutputMissing,
+    /// The audio scan did not report a usable duration.
+    DurationUnavailable,
 }
 
 impl std::fmt::Display for AudioError {
@@ -83,7 +90,11 @@ impl std::fmt::Display for AudioError {
             }
             AudioError::OutputMissing => write!(
                 f,
-                "ffmpeg did not produce an audio file — the input video may be unsupported or corrupt"
+                "ffmpeg did not produce any audio chunks — the input video may be unsupported or corrupt"
+            ),
+            AudioError::DurationUnavailable => write!(
+                f,
+                "ffmpeg could not determine the audio duration — the input video may be unsupported or corrupt"
             ),
         }
     }
@@ -140,26 +151,110 @@ fn verify_ffmpeg_available() -> Result<(), AudioError> {
     }
 }
 
+/// Find quiet intervals and the decoded audio duration in one fast pass.
+/// `silencedetect` only observes the audio; it does not remove any samples.
+fn scan_audio(video_path: &Path) -> Result<(Vec<f64>, f64), AudioError> {
+    let output = Command::new("ffmpeg")
+        .arg("-hide_banner")
+        .arg("-nostdin")
+        .arg("-nostats")
+        .arg("-loglevel")
+        .arg("info")
+        .arg("-i")
+        .arg(video_path)
+        .arg("-map")
+        .arg("0:a:0")
+        .arg("-af")
+        .arg(format!(
+            "silencedetect=noise={SILENCE_THRESHOLD}:d={MIN_SILENCE_SECS}"
+        ))
+        .arg("-f")
+        .arg("null")
+        .arg("-")
+        .arg("-progress")
+        .arg("pipe:1")
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|err| AudioError::FfmpegSpawnFailed(err.to_string()))?;
+
+    if !output.status.success() {
+        return Err(AudioError::FfmpegFailed {
+            status: output.status.code(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        });
+    }
+
+    let progress = String::from_utf8_lossy(&output.stdout);
+    let duration = progress
+        .lines()
+        .filter_map(|line| line.strip_prefix("out_time_us="))
+        .filter_map(|value| value.parse::<u64>().ok())
+        .last()
+        .map(|micros| micros as f64 / 1_000_000.0)
+        .filter(|seconds| seconds.is_finite() && *seconds > 0.0)
+        .ok_or(AudioError::DurationUnavailable)?;
+
+    let log = String::from_utf8_lossy(&output.stderr);
+    let mut silence_start = None;
+    let mut pauses = Vec::new();
+    for line in log.lines() {
+        if let Some(value) = line.split("silence_start: ").nth(1) {
+            silence_start = value.trim().parse::<f64>().ok();
+        } else if let Some(value) = line.split("silence_end: ").nth(1) {
+            let end = value
+                .split_whitespace()
+                .next()
+                .and_then(|s| s.parse::<f64>().ok());
+            if let (Some(start), Some(end)) = (silence_start.take(), end) {
+                if end > start && end <= duration {
+                    pauses.push((start + end) / 2.0);
+                }
+            }
+        }
+    }
+    Ok((pauses, duration))
+}
+
+/// Prefer a pause near two minutes, while bounding every chunk to 150 seconds.
+/// A timed cut is used if no qualifying pause exists in the allowed window.
+fn choose_split_points(pauses: &[f64], duration: f64) -> Vec<f64> {
+    let mut cuts = Vec::new();
+    let mut start = 0.0;
+    while duration - start > MAX_CHUNK_SECS {
+        let earliest = start + MIN_CHUNK_SECS;
+        let latest = (start + MAX_CHUNK_SECS).min(duration - MIN_CHUNK_SECS);
+        let target = (start + TARGET_CHUNK_SECS).min(latest);
+        let cut = pauses
+            .iter()
+            .copied()
+            .filter(|pause| *pause >= earliest && *pause <= latest)
+            .min_by(|a, b| (a - target).abs().total_cmp(&(b - target).abs()))
+            .unwrap_or(target);
+        cuts.push(cut);
+        start = cut;
+    }
+    cuts
+}
+
 /// Extract MiMo-compatible audio from `video_path` into a per-run temporary
-/// workspace, returning the extracted audio's path alongside the workspace
-/// guard that owns it.
+/// workspace, returning ordered chunk paths alongside the workspace guard.
 ///
-/// The output is MP3 encoded with `libmp3lame` at a 128 kbps constant
-/// bitrate: a deliberate choice to keep requests well under the provider's
-/// 10 MB Base64-encoded size limit for longer recordings, while remaining
-/// well within MiMo V2.5 ASR's accepted WAV/MP3 formats and more than
-/// sufficient quality for spoken-word transcription. An uncompressed WAV
-/// extraction was tried first but exceeded the limit on longer videos;
-/// 128 kbps MP3 keeps the same source video under half that size.
+/// The output is mono MP3 encoded with `libmp3lame` at 64 kbps. A first pass
+/// finds quiet intervals; a second pass splits near two-minute marks within
+/// those intervals when possible. No chunk exceeds about 150 seconds.
+/// Playback speed and the pauses themselves are preserved.
 pub fn extract_audio(video_path: &Path) -> Result<ExtractedAudio, AudioError> {
     validate_video_path(video_path)?;
     verify_ffmpeg_available()?;
+    let (pauses, duration) = scan_audio(video_path)?;
+    let cuts = choose_split_points(&pauses, duration);
 
     let workspace = TempDir::with_prefix("video-to-markdown-")
         .map_err(|err| AudioError::TempWorkspace(err.to_string()))?;
-    let output_path = workspace.path().join("audio.mp3");
+    let output_pattern = workspace.path().join("audio-%03d.mp3");
 
-    let output = Command::new("ffmpeg")
+    let mut command = Command::new("ffmpeg");
+    command
         .arg("-hide_banner")
         .arg("-loglevel")
         .arg("error")
@@ -167,12 +262,30 @@ pub fn extract_audio(video_path: &Path) -> Result<ExtractedAudio, AudioError> {
         .arg("-y")
         .arg("-i")
         .arg(video_path)
-        .arg("-vn")
+        .arg("-map")
+        .arg("0:a:0")
         .arg("-c:a")
         .arg("libmp3lame")
+        .arg("-ac")
+        .arg("1")
         .arg("-b:a")
-        .arg("128k")
-        .arg(&output_path)
+        .arg("64k")
+        .arg("-f")
+        .arg("segment");
+    if cuts.is_empty() {
+        command.arg("-segment_time").arg("150");
+    } else {
+        let times = cuts
+            .iter()
+            .map(|cut| format!("{cut:.3}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        command.arg("-segment_times").arg(times);
+    }
+    let output = command
+        .arg("-reset_timestamps")
+        .arg("1")
+        .arg(&output_pattern)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
@@ -186,13 +299,26 @@ pub fn extract_audio(video_path: &Path) -> Result<ExtractedAudio, AudioError> {
         });
     }
 
-    match std::fs::metadata(&output_path) {
-        Ok(metadata) if metadata.is_file() && metadata.len() > 0 => {}
-        _ => return Err(AudioError::OutputMissing),
+    let mut paths: Vec<PathBuf> = std::fs::read_dir(workspace.path())
+        .map_err(|err| AudioError::TempWorkspace(err.to_string()))?
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("audio-") && name.ends_with(".mp3"))
+        })
+        .collect();
+    paths.sort();
+    if paths.is_empty()
+        || paths.iter().any(|path| {
+            !std::fs::metadata(path).is_ok_and(|metadata| metadata.is_file() && metadata.len() > 0)
+        })
+    {
+        return Err(AudioError::OutputMissing);
     }
 
     Ok(ExtractedAudio {
-        path: output_path,
+        paths,
         _workspace: workspace,
     })
 }
@@ -258,7 +384,7 @@ mod tests {
 
     /// Real smoke test: only runs when `ffmpeg` is on PATH. Generates a
     /// tiny synthetic test video with `ffmpeg`'s `lavfi` inputs and checks
-    /// that `extract_audio` produces a non-empty 128 kbps MP3 file.
+    /// that `extract_audio` produces a non-empty MP3 file.
     #[test]
     fn extracts_audio_from_a_real_synthetic_video_when_ffmpeg_is_available() {
         if !ffmpeg_available() {
@@ -292,13 +418,11 @@ mod tests {
         assert!(status.success(), "failed to generate synthetic test video");
 
         let extracted = extract_audio(&video_path).expect("extract audio");
-        let metadata = std::fs::metadata(&extracted.path).expect("read extracted audio metadata");
+        assert_eq!(extracted.paths.len(), 1);
+        let path = &extracted.paths[0];
+        let metadata = std::fs::metadata(path).expect("read extracted audio metadata");
         assert!(metadata.len() > 0, "extracted audio file is empty");
-        assert!(extracted
-            .path
-            .extension()
-            .map(|ext| ext == "mp3")
-            .unwrap_or(false));
+        assert!(path.extension().map(|ext| ext == "mp3").unwrap_or(false));
     }
 
     #[test]

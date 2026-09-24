@@ -15,13 +15,8 @@
 //! module validates the encoded size itself and, when it would exceed the
 //! limit, stops before making a request rather than attempting an upload
 //! that the provider would reject. The error message tells the maintainer
-//! how to produce a smaller input (trim the video, or re-export from a
-//! shorter/lower-bitrate source). This version does not segment long audio
-//! into multiple requests: splitting audio would also split sentences and
-//! paragraphs across independent ASR calls, and reassembling those pieces
-//! back into coherent paragraph boundaries for the cleanup stage is not a
-//! problem this CLI solves yet. A maintainer who hits the limit is expected
-//! to supply a shorter recording.
+//! how to produce a smaller input (trim the video). The audio stage already
+//! splits recordings into short chunks, so this check applies per chunk.
 
 use std::path::{Path, PathBuf};
 
@@ -46,8 +41,7 @@ pub enum TranscriptionError {
     /// valid Unicode).
     MissingApiKey,
     /// The Base64-encoded audio exceeds the provider's request-size limit.
-    /// Per this CLI's policy, requests are never segmented automatically —
-    /// the maintainer must supply a smaller input.
+    /// The extracted chunk is too large for one request.
     EncodedAudioTooLarge {
         encoded_bytes: usize,
         limit_bytes: usize,
@@ -71,6 +65,10 @@ pub enum TranscriptionError {
     /// The provider returned a response but the transcript was missing or
     /// blank.
     EmptyTranscript,
+    /// The provider stopped before it completed the transcript.
+    IncompleteTranscript(String),
+    /// The provider omitted transcript content after applying its filter.
+    ContentFiltered,
 }
 
 impl std::fmt::Display for TranscriptionError {
@@ -94,9 +92,8 @@ impl std::fmt::Display for TranscriptionError {
             } => write!(
                 f,
                 "extracted audio Base64-encodes to {encoded_bytes} bytes, which exceeds the \
-                 provider's {limit_bytes}-byte (10 MB) limit — this tool does not split audio \
-                 into multiple requests, so trim the source video to a shorter segment (or \
-                 re-export it at a lower bitrate) and re-run the command with a smaller input"
+                 provider's {limit_bytes}-byte (10 MB) limit — trim the source video and \
+                 re-run the command"
             ),
             TranscriptionError::Authentication(message) => write!(
                 f,
@@ -124,6 +121,14 @@ impl std::fmt::Display for TranscriptionError {
                 f,
                 "Xiaomi ASR returned an empty transcript — the audio may be silent, unclear, or \
                  in an unsupported language"
+            ),
+            TranscriptionError::IncompleteTranscript(reason) => write!(
+                f,
+                "Xiaomi ASR did not finish its transcript (finish_reason: {reason}) — try a shorter audio chunk"
+            ),
+            TranscriptionError::ContentFiltered => write!(
+                f,
+                "Xiaomi ASR filtered this audio chunk (finish_reason: content_filter) — the provider omitted content, so no Markdown was written; review the affected chunk or use another transcription method"
             ),
         }
     }
@@ -166,6 +171,18 @@ fn extract_transcript(
     let choice = response.choices.first().ok_or_else(|| {
         TranscriptionError::MalformedResponse("response contained no choices".to_string())
     })?;
+    if choice.finish_reason.as_deref() == Some("content_filter") {
+        return Err(TranscriptionError::ContentFiltered);
+    }
+    if choice.finish_reason.as_deref() != Some("stop") {
+        return Err(TranscriptionError::IncompleteTranscript(
+            choice
+                .finish_reason
+                .as_deref()
+                .unwrap_or("missing")
+                .to_string(),
+        ));
+    }
     let content = choice.message.content.as_deref().ok_or_else(|| {
         TranscriptionError::MalformedResponse("response choice had no message content".to_string())
     })?;
@@ -262,7 +279,7 @@ mod tests {
         let message = err.to_string();
         assert!(message.contains("trim"), "message was: {message}");
         assert!(
-            message.contains("does not split audio into multiple requests"),
+            message.contains("re-run the command"),
             "message was: {message}"
         );
     }

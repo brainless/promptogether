@@ -14,7 +14,7 @@ visitor-facing upload or transcription feature.
 ## Setup
 
 1. **Install `ffmpeg` and make sure it's on `PATH`.** The audio stage invokes
-   the `ffmpeg` binary directly (no shell) to extract 128 kbps MP3 audio
+   the `ffmpeg` binary directly (no shell) to extract 64 kbps mono MP3 audio
    (`libmp3lame`) from the source video. Verify it's available before running
    the CLI:
 
@@ -47,6 +47,35 @@ visitor-facing upload or transcription feature.
    precedence over the same name in `.env`. `.env` is listed in the repo's
    `.gitignore` — never commit it.
 
+3. **Optional: set up local ASR fallback.** Install
+   [whisper.cpp](https://github.com/ggml-org/whisper.cpp) so `whisper-cli` is
+   on `PATH`, and download a compatible `.bin` model using its
+   [model instructions](https://github.com/ggml-org/whisper.cpp/blob/master/models/README.md).
+   From a directory outside this repository, one setup is:
+
+   ```sh
+   git clone https://github.com/ggml-org/whisper.cpp.git
+   cd whisper.cpp
+   cmake -B build
+   cmake --build build -j --config Release
+   sh ./models/download-ggml-model.sh small.en
+   export PATH="$PWD/build/bin:$PATH"
+   ```
+
+   The fallback runs only when Xiaomi returns `finish_reason: content_filter`
+   for an ASR chunk. Pass the model path with `--local-asr-model`; the CLI
+   checks the model and executable before starting remote calls. For example:
+
+   ```sh
+   cargo run -p video-to-markdown-cli -- talk.mp4 \
+     --local-asr-model /path/to/ggml-small.en.bin
+   ```
+
+   The affected MP3 chunk is converted to 16 kHz mono, 16-bit WAV in a
+   temporary directory before `whisper-cli` reads it. The WAV and local raw
+   transcript are deleted when the fallback finishes. The resulting text
+   still goes to Xiaomi for the cleanup stage.
+
 | Variable | Description | Required |
 |----------|--------------|----------|
 | `XIAOMI_API_KEY` | Xiaomi API key used for both MiMo V2.5 ASR (transcription) and the MiMo V2.5 chat cleanup stage. Read once per run and reused for both calls. May be set in the shell environment or in a repository-root `.env` file. | Yes |
@@ -54,35 +83,42 @@ visitor-facing upload or transcription feature.
 ## A normal run
 
 ```sh
-cargo run -p video-to-markdown-cli -- <path-to-video> [--overwrite]
+cargo run -p video-to-markdown-cli -- <path-to-video> [--overwrite] [--local-asr-model <model.bin>]
 ```
 
 If you've built a release binary (`cargo build --release -p video-to-markdown-cli`),
 you can also run it directly as `video-to-markdown`:
 
 ```sh
-./target/release/video-to-markdown <path-to-video> [--overwrite]
+./target/release/video-to-markdown <path-to-video> [--overwrite] [--local-asr-model <model.bin>]
 ```
 
 - `<path-to-video>`: path to a local video file to transcribe.
 - `--overwrite`: required to replace an existing transcript already present
   under `video-from-text/`; without it, a colliding run is refused.
+- `--local-asr-model`: opt in to local `whisper-cli` transcription for ASR
+  chunks filtered by Xiaomi. The `.bin` model stays on your machine.
 
 What happens, in order:
 
 1. **Audio extraction.** The video is validated as a readable file, `ffmpeg`
-   is confirmed to be on `PATH`, and a 128 kbps MP3 file is extracted
-   (`ffmpeg -vn -c:a libmp3lame -b:a 128k`) into a per-run temporary
-   workspace (never overwriting the source video). MP3 was chosen over
-   uncompressed WAV because it keeps longer recordings well under the
-   provider's 10 MB Base64 size limit below.
-2. **ASR transcription.** The extracted audio is Base64-encoded, checked
-   against the provider's 10 MB request-size limit, and sent to MiMo V2.5
-   ASR via `llm-sdk`'s Xiaomi client to produce a raw transcript.
-3. **Cleanup.** The raw transcript is sent to a separate MiMo V2.5 chat call
+   is confirmed to be on `PATH`, then it scans the first audio track for
+   pauses of at least 0.6 seconds below -35 dB. It extracts 64 kbps mono MP3
+   chunks, choosing pauses near two-minute marks when possible. Chunks stay
+   between about 75 and 150 seconds; a timed cut is used if no suitable pause
+   exists. Playback speed and pauses are preserved. Temporary audio stays in
+   a per-run workspace and never overwrites the source video.
+2. **ASR transcription.** Each chunk is Base64-encoded, checked against the
+   provider's 10 MB request-size limit, and sent to MiMo V2.5 ASR via
+   `llm-sdk`. Shorter chunks keep each response within the model's output
+   capacity. The CLI rejects responses that report an incomplete finish. With
+   `--local-asr-model`, a filtered ASR chunk is instead transcribed locally.
+3. **Cleanup.** Each raw transcript chunk is sent to a separate MiMo V2.5 chat call
    with a dedicated system prompt (`video-to-markdown-cli/prompts/cleanup_system_prompt.txt`)
    that corrects only spelling, punctuation, capitalization, and grammar, and
-   adds paragraph breaks — nothing else.
+   adds paragraph breaks — nothing else. The CLI rejects a chunk if cleanup
+   removes more than 40% of its words. Cleaned chunks are joined in order.
+   A word at a chunk boundary may need manual review.
 4. **Markdown output.** The cleaned transcript is written atomically (via a
    temporary file and rename) as UTF-8 Markdown under `video-from-text/`.
 
@@ -120,7 +156,11 @@ transcript. Pass `--overwrite` to explicitly allow replacing it.
 | `ffmpeg was not found on PATH` | `ffmpeg` isn't installed or isn't on `PATH`. | Install `ffmpeg` (see Setup) and confirm `ffmpeg -version` works. |
 | `ffmpeg failed (...)` / `ffmpeg did not produce an audio file` | The `ffmpeg` process exited non-zero or produced no output — usually an unsupported or corrupt video. | Try re-encoding the source video, or confirm it plays correctly elsewhere. |
 | `XIAOMI_API_KEY is not set` | The environment variable is missing or empty in this shell. | `export XIAOMI_API_KEY=...` before running. |
-| `extracted audio Base64-encodes to ... bytes, which exceeds the provider's ... (10 MB) limit` | The extracted audio is too large for a single ASR request. This tool deliberately does not segment audio into multiple requests (splitting audio would split sentences/paragraphs across independent ASR calls and complicate reassembly). | Trim the source video to a shorter segment, or re-export it at a lower bitrate, then re-run against the smaller input. |
+| `extracted audio Base64-encodes to ... bytes, which exceeds the provider's ... (10 MB) limit` | An extracted chunk is too large for one ASR request. | Trim the source video and re-run. Re-encoding the source at a lower bitrate will not help because this tool extracts a new 64 kbps MP3. |
+| `filtered this audio chunk` / `filtered this transcript chunk` | Xiaomi returned `finish_reason: content_filter`, meaning its filter omitted content. | Opt in to `--local-asr-model` for filtered ASR chunks. A filtered cleanup result still needs another cleanup method or manual review. The CLI does not publish an incomplete Markdown file. |
+| `local ASR fallback failed` | The model or `whisper-cli` is unavailable, WAV conversion failed, or local transcription failed. | Check the model path and that `whisper-cli` is on `PATH`. |
+| `did not finish its transcript` | The ASR or cleanup response stopped for a reason other than `stop` or `content_filter`, such as `length`. | Retry; for `length`, use a shorter source clip. No Markdown is published from an incomplete response. |
+| `cleanup agent shortened a transcript chunk` | Cleanup removed more than 40% of the words in a substantial chunk. | Review the source and retry. No Markdown is published from this response. |
 | `Xiaomi ASR authentication failed` / `cleanup authentication failed` | The API key is invalid, revoked, or otherwise rejected. | Check that `XIAOMI_API_KEY` holds a current, valid key. |
 | `Xiaomi ASR rate limit exceeded` / `cleanup rate limit exceeded` | The provider throttled this request. | Wait and retry. |
 | `network error while calling Xiaomi ASR` / `... the cleanup agent` | A transport-level failure (DNS, TLS, connection reset, timeout). | Check network connectivity and retry. |
@@ -141,7 +181,9 @@ This tool sends the maintainer's extracted audio and the raw transcript text
 over the network to Xiaomi's MiMo V2.5 models (ASR for transcription, chat
 for cleanup), under the account tied to `XIAOMI_API_KEY`. In plain terms:
 the spoken content of the video leaves your local machine and is processed
-by a third-party provider.
+by a third-party provider. When `--local-asr-model` is used, only filtered ASR
+chunks are transcribed locally; the raw transcript still goes to Xiaomi for
+cleanup.
 
 Do not run this tool on video content that shouldn't be shared with that
 provider — confidential material, sensitive discussions, or recordings

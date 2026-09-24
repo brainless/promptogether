@@ -127,8 +127,8 @@ model-edited transcript is a verbatim or accessibility-certified transcript.
   exactly one new Markdown file beneath `video-from-text/` or exits non-zero
   with an actionable, stage-specific error.
 - The command performs the stages in order: audio extraction, MiMo V2.5 ASR
-  transcription, constrained cleanup by a separate agent, then atomic Markdown
-  output.
+  transcription (or the opted-in local fallback for a filtered chunk),
+  constrained cleanup by a separate agent, then atomic Markdown output.
 - The final text is divided into readable paragraphs and differs from the raw
   transcript only where spelling, punctuation, capitalization, or grammar was
   corrected.
@@ -146,10 +146,16 @@ model-edited transcript is a verbatim or accessibility-certified transcript.
   the time this epic was implemented).
 - The cleanup agent uses the same Xiaomi client and credential
   (`XIAOMI_API_KEY`) as transcription, calling the `MIMO_V2_5` chat model.
-- Source videos are expected to fit within the 10 MB encoded-audio limit for
-  this version. Audio that would exceed it stops the run before upload with
-  guidance to produce a smaller input (trim the video or otherwise shrink the
-  source); automatic segmentation is not implemented.
+- The CLI now scans for pauses and extracts approximately two-minute, 64 kbps
+  mono MP3 chunks, splitting within detected pauses when possible and using a
+  timed cut when needed to keep chunks bounded. Each chunk is checked against
+  the 10 MB encoded-audio limit before upload, transcribed and cleaned
+  separately, then joined in order. The caller should review words at chunk
+  boundaries.
+- An optional `--local-asr-model` path enables `whisper-cli` as a local ASR
+  fallback for chunks Xiaomi marks `content_filter`. The affected MP3 chunk
+  is converted to 16 kHz mono, 16-bit WAV in a temporary workspace. Cleanup
+  still uses Xiaomi, and no local transcript is retained after the run.
 - ASR language is fixed to English; there is no CLI language option.
 - The Markdown output includes minimal front matter (source filename and a
   generation timestamp) plus the cleaned paragraphs, and a trailing note
@@ -159,6 +165,44 @@ model-edited transcript is a verbatim or accessibility-certified transcript.
   separate output-slug option.
 - Raw ASR text is disposable; there is no debug/review mode that preserves it
   separately from the published Markdown.
+
+## Implementation change notes (2026-09-24)
+
+- **Audio size:** The first implementation extracted 128 kbps MP3. Ten minutes
+  at that bitrate is about 12.8 MB after Base64 encoding, exceeding Xiaomi's
+  10 MB encoded-audio limit. Extraction now uses 64 kbps mono MP3 without
+  speeding up speech. Re-encoding the source video at a lower bitrate does not
+  help because the CLI creates a new MP3.
+- **Incomplete transcript diagnosis:** An 11-minute, 13-second source and its
+  extracted MP3 both had 673.40 seconds of audio; ffmpeg decoded the MP3
+  without errors. The initial Markdown had only 373 words, placing the loss
+  after extraction. Xiaomi lists a 2K-token maximum ASR output, so a single
+  long request was a plausible cause, though the original raw ASR response
+  was not retained to confirm the precise stage.
+- **Pause-based chunking:** `ffmpeg` scans the first audio track for pauses at
+  least 0.6 seconds long below -35 dB. The CLI chooses pause midpoints near
+  120-second targets, keeps chunks roughly 75–150 seconds, and uses a timed
+  cut when no suitable pause exists. The 11-minute source yielded six chunks
+  of roughly 91–120 seconds. Pauses and playback speed are preserved.
+- **Response guards:** ASR and cleanup accept only `finish_reason: stop`.
+  `length` and other incomplete responses stop the run. Xiaomi's
+  `content_filter` has a distinct error because it means content was omitted
+  by the provider, not that the audio was cut. Cleanup also rejects a
+  substantial chunk if it removes more than 40% of the raw transcript's
+  words. No incomplete result is published as Markdown.
+- **Optional local fallback:** `--local-asr-model <model.bin>` checks for a
+  `whisper-cli` executable and model before remote calls. If Xiaomi filters
+  an ASR chunk, only that chunk is transcribed locally with `whisper.cpp`;
+  other chunks continue using Xiaomi. The fallback converts the MP3 to
+  16 kHz mono, 16-bit WAV and deletes temporary audio and text afterward.
+  The raw fallback transcript still goes to Xiaomi for cleanup; a filtered
+  cleanup response remains an error.
+- **Verification:** `cargo check -p video-to-markdown-cli` and
+  `git diff --check` passed. Direct ffmpeg/ffprobe checks confirmed complete
+  audio, the pause-based chunk durations, and the WAV conversion format.
+  Automated tests and a live end-to-end fallback run were not performed; the
+  local `whisper-cli` executable and model were not installed in the working
+  environment.
 
 ## Scope boundary
 

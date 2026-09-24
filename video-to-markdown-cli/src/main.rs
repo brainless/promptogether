@@ -8,6 +8,7 @@
 mod audio;
 mod cleanup;
 mod cli;
+mod local_asr;
 mod output;
 mod transcription;
 mod workflow;
@@ -35,7 +36,13 @@ async fn main() {
     load_dotenv();
     let cli = cli::Cli::parse();
 
-    match workflow::run(&cli.video_path, cli.overwrite).await {
+    match workflow::run(
+        &cli.video_path,
+        cli.overwrite,
+        cli.local_asr_model.as_deref(),
+    )
+    .await
+    {
         Ok(markdown_path) => {
             // Only the final Markdown path goes to stdout, so the command
             // is composable in scripts; all progress and errors go to

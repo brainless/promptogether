@@ -2,7 +2,7 @@
 //!
 //! `workflow::run` is the single entry point `main.rs` calls. It runs
 //! `transcription::api_key_from_env`, then `audio::extract_audio`, then
-//! `transcription::transcribe`, then `cleanup::clean_transcript`, then
+//! transcription and cleanup for each audio chunk, then
 //! `output::write_markdown`, in order, propagating each stage's typed error
 //! and printing concise stage progress to stderr along the way.
 //!
@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 
 use crate::audio::{self, AudioError};
 use crate::cleanup::{self, CleanupError};
+use crate::local_asr::{self, LocalAsrError};
 use crate::output::{self, OutputError};
 use crate::transcription::{self, TranscriptionError};
 
@@ -27,6 +28,8 @@ pub enum WorkflowError {
     Audio(AudioError),
     /// Speech transcription failed.
     Transcription(TranscriptionError),
+    /// Optional local fallback transcription failed.
+    LocalAsr(LocalAsrError),
     /// Transcript cleanup failed.
     Cleanup(CleanupError),
     /// Markdown output failed.
@@ -40,6 +43,7 @@ impl std::fmt::Display for WorkflowError {
             WorkflowError::Transcription(err) => {
                 write!(f, "transcription stage failed: {err}")
             }
+            WorkflowError::LocalAsr(err) => write!(f, "local ASR fallback failed: {err}"),
             WorkflowError::Cleanup(err) => write!(f, "cleanup stage failed: {err}"),
             WorkflowError::Output(err) => write!(f, "output stage failed: {err}"),
         }
@@ -57,6 +61,12 @@ impl From<AudioError> for WorkflowError {
 impl From<TranscriptionError> for WorkflowError {
     fn from(err: TranscriptionError) -> Self {
         WorkflowError::Transcription(err)
+    }
+}
+
+impl From<LocalAsrError> for WorkflowError {
+    fn from(err: LocalAsrError) -> Self {
+        WorkflowError::LocalAsr(err)
     }
 }
 
@@ -78,29 +88,56 @@ impl From<OutputError> for WorkflowError {
 /// Stage progress is printed to stderr, one concise line per stage, naming
 /// only the stage — never API keys, Base64 audio, or transcript contents.
 /// The caller is responsible for printing the returned path to stdout.
-pub async fn run(video_path: &Path, overwrite: bool) -> Result<PathBuf, WorkflowError> {
+pub async fn run(
+    video_path: &Path,
+    overwrite: bool,
+    local_asr_model: Option<&Path>,
+) -> Result<PathBuf, WorkflowError> {
     // Read the credential first: it is a cheap, local check, and failing
     // fast on a missing API key avoids spending time extracting audio (and
     // invoking ffmpeg) only to fail at the transcription stage anyway. The
     // same key is reused for both the transcription and cleanup stages.
     eprintln!("Checking for XIAOMI_API_KEY...");
     let api_key = transcription::api_key_from_env()?;
+    if let Some(model_path) = local_asr_model {
+        eprintln!("Checking optional local ASR fallback...");
+        local_asr::validate_setup(model_path)?;
+    }
 
     eprintln!("Extracting audio from video...");
     let extracted_audio = audio::extract_audio(video_path)?;
     eprintln!("Audio extraction complete.");
 
-    eprintln!("Transcribing audio via MiMo V2.5 ASR...");
-    let raw_transcript = transcription::transcribe(&extracted_audio.path, &api_key).await?;
-    eprintln!("Transcription complete.");
+    let mut cleaned_chunks = Vec::with_capacity(extracted_audio.paths.len());
+    for (index, path) in extracted_audio.paths.iter().enumerate() {
+        eprintln!(
+            "Transcribing audio chunk {}/{} via MiMo V2.5 ASR...",
+            index + 1,
+            extracted_audio.paths.len()
+        );
+        let raw_transcript = match transcription::transcribe(path, &api_key).await {
+            Ok(transcript) => transcript,
+            Err(TranscriptionError::ContentFiltered) if local_asr_model.is_some() => {
+                eprintln!(
+                    "Xiaomi filtered chunk {}/{}; transcribing it locally with whisper-cli...",
+                    index + 1,
+                    extracted_audio.paths.len()
+                );
+                local_asr::transcribe(path, local_asr_model.expect("checked above"))?
+            }
+            Err(err) => return Err(err.into()),
+        };
+        eprintln!(
+            "Cleaning up transcript chunk {}/{}...",
+            index + 1,
+            extracted_audio.paths.len()
+        );
+        cleaned_chunks.push(cleanup::clean_transcript(&raw_transcript, &api_key).await?);
+    }
+    let cleaned_transcript = cleaned_chunks.join("\n\n");
 
-    // The extracted audio is no longer needed once transcription has read
-    // it; `extracted_audio` (and its `TempDir` guard) is dropped naturally
-    // at the end of this function, cleaning up the temporary workspace.
-
-    eprintln!("Cleaning up transcript...");
-    let cleaned_transcript = cleanup::clean_transcript(&raw_transcript, &api_key).await?;
-    eprintln!("Transcript cleanup complete.");
+    // `extracted_audio` keeps its temporary workspace alive through every
+    // request. It is deleted when this function returns, including on error.
 
     eprintln!("Writing Markdown...");
     let markdown_path = output::write_markdown(video_path, &cleaned_transcript, overwrite)?;

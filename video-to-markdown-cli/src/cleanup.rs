@@ -73,6 +73,15 @@ pub enum CleanupError {
     /// The provider returned a response but the cleaned transcript was
     /// missing or blank.
     EmptyResult,
+    /// The provider stopped before it completed the cleaned transcript.
+    IncompleteResult(String),
+    /// The provider omitted cleaned text after applying its filter.
+    ContentFiltered,
+    /// Cleanup dropped too much text to be trusted as a faithful transcript.
+    SuspiciouslyShort {
+        raw_words: usize,
+        cleaned_words: usize,
+    },
 }
 
 impl std::fmt::Display for CleanupError {
@@ -107,6 +116,21 @@ impl std::fmt::Display for CleanupError {
                 f,
                 "cleanup agent returned an empty result — the raw transcript was not corrected"
             ),
+            CleanupError::IncompleteResult(reason) => write!(
+                f,
+                "cleanup agent did not finish its transcript (finish_reason: {reason})"
+            ),
+            CleanupError::ContentFiltered => write!(
+                f,
+                "cleanup agent filtered this transcript chunk (finish_reason: content_filter) — the provider omitted content, so no Markdown was written; review the affected chunk or use another cleanup method"
+            ),
+            CleanupError::SuspiciouslyShort {
+                raw_words,
+                cleaned_words,
+            } => write!(
+                f,
+                "cleanup agent shortened a transcript chunk from {raw_words} to {cleaned_words} words — no Markdown was written; review the source or retry"
+            ),
         }
     }
 }
@@ -125,6 +149,18 @@ fn extract_cleaned_transcript(
     let choice = response.choices.first().ok_or_else(|| {
         CleanupError::MalformedResponse("response contained no choices".to_string())
     })?;
+    if choice.finish_reason.as_deref() == Some("content_filter") {
+        return Err(CleanupError::ContentFiltered);
+    }
+    if choice.finish_reason.as_deref() != Some("stop") {
+        return Err(CleanupError::IncompleteResult(
+            choice
+                .finish_reason
+                .as_deref()
+                .unwrap_or("missing")
+                .to_string(),
+        ));
+    }
     let content = choice.message.content.as_deref().ok_or_else(|| {
         CleanupError::MalformedResponse("response choice had no message content".to_string())
     })?;
@@ -178,7 +214,16 @@ pub async fn clean_transcript(raw_transcript: &str, api_key: &str) -> Result<Str
         .await
         .map_err(map_llm_error)?;
 
-    extract_cleaned_transcript(&response)
+    let cleaned = extract_cleaned_transcript(&response)?;
+    let raw_words = raw_transcript.split_whitespace().count();
+    let cleaned_words = cleaned.split_whitespace().count();
+    if raw_words >= 30 && cleaned_words * 5 < raw_words * 3 {
+        return Err(CleanupError::SuspiciouslyShort {
+            raw_words,
+            cleaned_words,
+        });
+    }
+    Ok(cleaned)
 }
 
 #[cfg(test)]

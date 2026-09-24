@@ -23,6 +23,11 @@ pub struct Cli {
     /// silently replacing reviewed content.
     #[arg(long)]
     pub overwrite: bool,
+
+    /// Use this whisper.cpp model locally if Xiaomi filters an ASR chunk.
+    /// Requires `whisper-cli` on PATH; other chunks still use Xiaomi.
+    #[arg(long, value_name = "MODEL_PATH")]
+    pub local_asr_model: Option<PathBuf>,
 }
 
 #[cfg(test)]
@@ -37,6 +42,7 @@ mod tests {
 
         assert_eq!(cli.video_path, PathBuf::from("video.mp4"));
         assert!(!cli.overwrite);
+        assert!(cli.local_asr_model.is_none());
     }
 
     #[test]
