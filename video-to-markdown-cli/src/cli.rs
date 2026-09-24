@@ -28,6 +28,16 @@ pub struct Cli {
     /// Requires `whisper-cli` on PATH; other chunks still use Xiaomi.
     #[arg(long, value_name = "MODEL_PATH")]
     pub local_asr_model: Option<PathBuf>,
+
+    /// Use ElevenLabs Scribe v2 if Xiaomi filters an ASR chunk.
+    /// Requires ELEVENLABS_API_KEY. Only filtered MP3 chunks are uploaded.
+    #[arg(long, conflicts_with = "local_asr_model")]
+    pub elevenlabs_fallback: bool,
+
+    /// Print chunk and provider response metadata to stderr for diagnosis.
+    /// Does not print audio, transcript text, or credentials.
+    #[arg(long)]
+    pub diagnostics: bool,
 }
 
 #[cfg(test)]

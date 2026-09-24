@@ -127,7 +127,7 @@ model-edited transcript is a verbatim or accessibility-certified transcript.
   exactly one new Markdown file beneath `video-from-text/` or exits non-zero
   with an actionable, stage-specific error.
 - The command performs the stages in order: audio extraction, MiMo V2.5 ASR
-  transcription (or the opted-in local fallback for a filtered chunk),
+  transcription (or an opted-in fallback for a filtered chunk),
   constrained cleanup by a separate agent, then atomic Markdown output.
 - The final text is divided into readable paragraphs and differs from the raw
   transcript only where spelling, punctuation, capitalization, or grammar was
@@ -142,8 +142,8 @@ model-edited transcript is a verbatim or accessibility-certified transcript.
 
 - `llm-sdk` is pinned as a Git dependency at
   `https://github.com/brainless/llm-sdk`, revision
-  `35e3a52ea8745b324635e9eb69d3c8084d812f10` (the only revision on `master` at
-  the time this epic was implemented).
+  `5dad1369c0325b36376a54836a5a3a5fe6a11004`, which adds ElevenLabs
+  Scribe v2 batch transcription support.
 - The cleanup agent uses the same Xiaomi client and credential
   (`XIAOMI_API_KEY`) as transcription, calling the `MIMO_V2_5` chat model.
 - The CLI now scans for pauses and extracts approximately two-minute, 64 kbps
@@ -156,6 +156,9 @@ model-edited transcript is a verbatim or accessibility-certified transcript.
   fallback for chunks Xiaomi marks `content_filter`. The affected MP3 chunk
   is converted to 16 kHz mono, 16-bit WAV in a temporary workspace. Cleanup
   still uses Xiaomi, and no local transcript is retained after the run.
+- An optional `--elevenlabs-fallback` flag sends only Xiaomi-filtered MP3
+  chunks to Scribe v2 through `llm-sdk`, using `ELEVENLABS_API_KEY`. It is
+  mutually exclusive with `--local-asr-model`. Cleanup still uses Xiaomi.
 - ASR language is fixed to English; there is no CLI language option.
 - The Markdown output includes minimal front matter (source filename and a
   generation timestamp) plus the cleaned paragraphs, and a trailing note

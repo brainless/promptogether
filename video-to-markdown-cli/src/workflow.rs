@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 
 use crate::audio::{self, AudioError};
 use crate::cleanup::{self, CleanupError};
+use crate::elevenlabs_asr::{self, ElevenLabsAsrError};
 use crate::local_asr::{self, LocalAsrError};
 use crate::output::{self, OutputError};
 use crate::transcription::{self, TranscriptionError};
@@ -30,6 +31,8 @@ pub enum WorkflowError {
     Transcription(TranscriptionError),
     /// Optional local fallback transcription failed.
     LocalAsr(LocalAsrError),
+    /// Optional ElevenLabs fallback transcription failed.
+    ElevenLabsAsr(ElevenLabsAsrError),
     /// Transcript cleanup failed.
     Cleanup(CleanupError),
     /// Markdown output failed.
@@ -44,6 +47,7 @@ impl std::fmt::Display for WorkflowError {
                 write!(f, "transcription stage failed: {err}")
             }
             WorkflowError::LocalAsr(err) => write!(f, "local ASR fallback failed: {err}"),
+            WorkflowError::ElevenLabsAsr(err) => write!(f, "ElevenLabs ASR fallback failed: {err}"),
             WorkflowError::Cleanup(err) => write!(f, "cleanup stage failed: {err}"),
             WorkflowError::Output(err) => write!(f, "output stage failed: {err}"),
         }
@@ -70,6 +74,12 @@ impl From<LocalAsrError> for WorkflowError {
     }
 }
 
+impl From<ElevenLabsAsrError> for WorkflowError {
+    fn from(err: ElevenLabsAsrError) -> Self {
+        WorkflowError::ElevenLabsAsr(err)
+    }
+}
+
 impl From<CleanupError> for WorkflowError {
     fn from(err: CleanupError) -> Self {
         WorkflowError::Cleanup(err)
@@ -92,6 +102,8 @@ pub async fn run(
     video_path: &Path,
     overwrite: bool,
     local_asr_model: Option<&Path>,
+    elevenlabs_fallback: bool,
+    diagnostics: bool,
 ) -> Result<PathBuf, WorkflowError> {
     // Read the credential first: it is a cheap, local check, and failing
     // fast on a missing API key avoids spending time extracting audio (and
@@ -103,10 +115,41 @@ pub async fn run(
         eprintln!("Checking optional local ASR fallback...");
         local_asr::validate_setup(model_path)?;
     }
+    let elevenlabs_key = if elevenlabs_fallback {
+        eprintln!("Checking for ELEVENLABS_API_KEY...");
+        Some(elevenlabs_asr::api_key_from_env()?)
+    } else {
+        None
+    };
 
     eprintln!("Extracting audio from video...");
     let extracted_audio = audio::extract_audio(video_path)?;
     eprintln!("Audio extraction complete.");
+    if diagnostics {
+        eprintln!("diagnostics: {} audio chunks", extracted_audio.paths.len());
+        for (index, path) in extracted_audio.paths.iter().enumerate() {
+            let size = std::fs::metadata(path)
+                .map(|metadata| metadata.len())
+                .unwrap_or(0);
+            if let Some((start, end)) = extracted_audio.planned_ranges.get(index) {
+                eprintln!(
+                    "diagnostics: chunk {}/{} planned range {:.1}-{:.1}s, MP3 {} bytes",
+                    index + 1,
+                    extracted_audio.paths.len(),
+                    start,
+                    end,
+                    size
+                );
+            } else {
+                eprintln!(
+                    "diagnostics: chunk {}/{} MP3 {} bytes (planned range unavailable)",
+                    index + 1,
+                    extracted_audio.paths.len(),
+                    size
+                );
+            }
+        }
+    }
 
     let mut cleaned_chunks = Vec::with_capacity(extracted_audio.paths.len());
     for (index, path) in extracted_audio.paths.iter().enumerate() {
@@ -115,7 +158,7 @@ pub async fn run(
             index + 1,
             extracted_audio.paths.len()
         );
-        let raw_transcript = match transcription::transcribe(path, &api_key).await {
+        let raw_transcript = match transcription::transcribe(path, &api_key, diagnostics).await {
             Ok(transcript) => transcript,
             Err(TranscriptionError::ContentFiltered) if local_asr_model.is_some() => {
                 eprintln!(
@@ -124,6 +167,19 @@ pub async fn run(
                     extracted_audio.paths.len()
                 );
                 local_asr::transcribe(path, local_asr_model.expect("checked above"))?
+            }
+            Err(TranscriptionError::ContentFiltered) if elevenlabs_key.is_some() => {
+                eprintln!(
+                    "Xiaomi filtered chunk {}/{}; transcribing it with ElevenLabs Scribe v2...",
+                    index + 1,
+                    extracted_audio.paths.len()
+                );
+                elevenlabs_asr::transcribe(
+                    path,
+                    elevenlabs_key.as_deref().expect("checked above"),
+                    diagnostics,
+                )
+                .await?
             }
             Err(err) => return Err(err.into()),
         };
@@ -261,7 +317,14 @@ mod tests {
             return;
         }
 
-        let result = run(Path::new("/nonexistent/video-does-not-exist.mp4"), false).await;
+        let result = run(
+            Path::new("/nonexistent/video-does-not-exist.mp4"),
+            false,
+            None,
+            false,
+            false,
+        )
+        .await;
 
         match result {
             Err(WorkflowError::Transcription(TranscriptionError::MissingApiKey)) => {}

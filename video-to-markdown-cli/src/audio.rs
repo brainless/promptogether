@@ -24,6 +24,8 @@ use tempfile::TempDir;
 pub struct ExtractedAudio {
     /// Ordered paths to the extracted MP3 chunks inside the temporary workspace.
     pub paths: Vec<PathBuf>,
+    /// Intended split intervals in seconds; actual MP3 boundaries may vary slightly.
+    pub planned_ranges: Vec<(f64, f64)>,
     _workspace: TempDir,
 }
 
@@ -317,8 +319,17 @@ pub fn extract_audio(video_path: &Path) -> Result<ExtractedAudio, AudioError> {
         return Err(AudioError::OutputMissing);
     }
 
+    let boundaries = std::iter::once(0.0)
+        .chain(cuts.iter().copied())
+        .chain(std::iter::once(duration))
+        .collect::<Vec<_>>();
+    let planned_ranges = boundaries
+        .windows(2)
+        .map(|pair| (pair[0], pair[1]))
+        .collect::<Vec<_>>();
     Ok(ExtractedAudio {
         paths,
+        planned_ranges,
         _workspace: workspace,
     })
 }

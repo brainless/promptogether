@@ -8,6 +8,7 @@
 mod audio;
 mod cleanup;
 mod cli;
+mod elevenlabs_asr;
 mod local_asr;
 mod output;
 mod transcription;
@@ -40,6 +41,8 @@ async fn main() {
         &cli.video_path,
         cli.overwrite,
         cli.local_asr_model.as_deref(),
+        cli.elevenlabs_fallback,
+        cli.diagnostics,
     )
     .await
     {

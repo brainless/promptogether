@@ -76,21 +76,33 @@ visitor-facing upload or transcription feature.
    transcript are deleted when the fallback finishes. The resulting text
    still goes to Xiaomi for the cleanup stage.
 
+4. **Optional: use ElevenLabs Scribe v2 as the ASR fallback.** Set
+   `ELEVENLABS_API_KEY` in the environment or repository-root `.env`, then
+   pass `--elevenlabs-fallback`. Only MP3 chunks Xiaomi marks
+   `content_filter` are sent to ElevenLabs. This option cannot be combined
+   with `--local-asr-model`. The resulting raw transcript still goes to
+   Xiaomi for cleanup.
+
+   ```sh
+   cargo run -p video-to-markdown-cli -- talk.mp4 --elevenlabs-fallback
+   ```
+
 | Variable | Description | Required |
 |----------|--------------|----------|
 | `XIAOMI_API_KEY` | Xiaomi API key used for both MiMo V2.5 ASR (transcription) and the MiMo V2.5 chat cleanup stage. Read once per run and reused for both calls. May be set in the shell environment or in a repository-root `.env` file. | Yes |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key used only for filtered ASR chunks when `--elevenlabs-fallback` is set. May be set in the shell environment or repository-root `.env`. | Only with `--elevenlabs-fallback` |
 
 ## A normal run
 
 ```sh
-cargo run -p video-to-markdown-cli -- <path-to-video> [--overwrite] [--local-asr-model <model.bin>]
+cargo run -p video-to-markdown-cli -- <path-to-video> [--overwrite] [--local-asr-model <model.bin> | --elevenlabs-fallback] [--diagnostics]
 ```
 
 If you've built a release binary (`cargo build --release -p video-to-markdown-cli`),
 you can also run it directly as `video-to-markdown`:
 
 ```sh
-./target/release/video-to-markdown <path-to-video> [--overwrite] [--local-asr-model <model.bin>]
+./target/release/video-to-markdown <path-to-video> [--overwrite] [--local-asr-model <model.bin> | --elevenlabs-fallback] [--diagnostics]
 ```
 
 - `<path-to-video>`: path to a local video file to transcribe.
@@ -98,6 +110,12 @@ you can also run it directly as `video-to-markdown`:
   under `video-from-text/`; without it, a colliding run is refused.
 - `--local-asr-model`: opt in to local `whisper-cli` transcription for ASR
   chunks filtered by Xiaomi. The `.bin` model stays on your machine.
+- `--elevenlabs-fallback`: opt in to ElevenLabs Scribe v2 for ASR chunks
+  filtered by Xiaomi. Requires `ELEVENLABS_API_KEY`.
+- `--diagnostics`: print planned chunk time ranges and MP3 sizes, encoded
+  request sizes, and Xiaomi response ID, model, finish reason, content byte
+  count, and token counts to stderr. Audio, transcript text, and API keys are
+  not printed. Share these diagnostics if a chunk is unexpectedly filtered.
 
 What happens, in order:
 
@@ -113,6 +131,7 @@ What happens, in order:
    `llm-sdk`. Shorter chunks keep each response within the model's output
    capacity. The CLI rejects responses that report an incomplete finish. With
    `--local-asr-model`, a filtered ASR chunk is instead transcribed locally.
+   With `--elevenlabs-fallback`, it is sent to ElevenLabs Scribe v2 as an MP3.
 3. **Cleanup.** Each raw transcript chunk is sent to a separate MiMo V2.5 chat call
    with a dedicated system prompt (`video-to-markdown-cli/prompts/cleanup_system_prompt.txt`)
    that corrects only spelling, punctuation, capitalization, and grammar, and
@@ -157,7 +176,8 @@ transcript. Pass `--overwrite` to explicitly allow replacing it.
 | `ffmpeg failed (...)` / `ffmpeg did not produce an audio file` | The `ffmpeg` process exited non-zero or produced no output — usually an unsupported or corrupt video. | Try re-encoding the source video, or confirm it plays correctly elsewhere. |
 | `XIAOMI_API_KEY is not set` | The environment variable is missing or empty in this shell. | `export XIAOMI_API_KEY=...` before running. |
 | `extracted audio Base64-encodes to ... bytes, which exceeds the provider's ... (10 MB) limit` | An extracted chunk is too large for one ASR request. | Trim the source video and re-run. Re-encoding the source at a lower bitrate will not help because this tool extracts a new 64 kbps MP3. |
-| `filtered this audio chunk` / `filtered this transcript chunk` | Xiaomi returned `finish_reason: content_filter`, meaning its filter omitted content. | Opt in to `--local-asr-model` for filtered ASR chunks. A filtered cleanup result still needs another cleanup method or manual review. The CLI does not publish an incomplete Markdown file. |
+| `filtered this audio chunk` / `filtered this transcript chunk` | Xiaomi returned `finish_reason: content_filter`, meaning its filter omitted content. | Opt in to `--local-asr-model` or `--elevenlabs-fallback` for filtered ASR chunks. A filtered cleanup result still needs another cleanup method or manual review. The CLI does not publish an incomplete Markdown file. |
+| `ElevenLabs ASR fallback failed` | Scribe v2 could not transcribe a filtered chunk. | Check `ELEVENLABS_API_KEY`, the account's Scribe access, and the reported error. No incomplete Markdown is published. |
 | `local ASR fallback failed` | The model or `whisper-cli` is unavailable, WAV conversion failed, or local transcription failed. | Check the model path and that `whisper-cli` is on `PATH`. |
 | `did not finish its transcript` | The ASR or cleanup response stopped for a reason other than `stop` or `content_filter`, such as `length`. | Retry; for `length`, use a shorter source clip. No Markdown is published from an incomplete response. |
 | `cleanup agent shortened a transcript chunk` | Cleanup removed more than 40% of the words in a substantial chunk. | Review the source and retry. No Markdown is published from this response. |
@@ -182,8 +202,9 @@ over the network to Xiaomi's MiMo V2.5 models (ASR for transcription, chat
 for cleanup), under the account tied to `XIAOMI_API_KEY`. In plain terms:
 the spoken content of the video leaves your local machine and is processed
 by a third-party provider. When `--local-asr-model` is used, only filtered ASR
-chunks are transcribed locally; the raw transcript still goes to Xiaomi for
-cleanup.
+chunks are transcribed locally. When `--elevenlabs-fallback` is used, only
+filtered MP3 chunks are additionally sent to ElevenLabs. In both cases the
+raw transcript still goes to Xiaomi for cleanup.
 
 Do not run this tool on video content that shouldn't be shared with that
 provider — confidential material, sensitive discussions, or recordings

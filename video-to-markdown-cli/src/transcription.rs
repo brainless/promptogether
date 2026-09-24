@@ -219,7 +219,11 @@ fn map_llm_error(err: LlmError) -> TranscriptionError {
 /// the provider's limit before making any request, calls MiMo V2.5 ASR
 /// with English fixed, and defensively extracts the transcript. `api_key`
 /// is never logged, printed, or included in any error message.
-pub async fn transcribe(audio_path: &Path, api_key: &str) -> Result<String, TranscriptionError> {
+pub async fn transcribe(
+    audio_path: &Path,
+    api_key: &str,
+    diagnostics: bool,
+) -> Result<String, TranscriptionError> {
     let audio_bytes =
         std::fs::read(audio_path).map_err(|err| TranscriptionError::AudioUnreadable {
             path: audio_path.to_path_buf(),
@@ -228,6 +232,14 @@ pub async fn transcribe(audio_path: &Path, api_key: &str) -> Result<String, Tran
 
     let encoded = BASE64_STANDARD.encode(&audio_bytes);
     validate_encoded_size(encoded.len())?;
+    if diagnostics {
+        eprintln!(
+            "diagnostics: ASR request MP3 {} bytes, Base64 {} bytes (limit {}), language en",
+            audio_bytes.len(),
+            encoded.len(),
+            XIAOMI_BASE64_SIZE_LIMIT_BYTES
+        );
+    }
 
     let client = XiaomiClient::new(api_key).map_err(map_llm_error)?;
 
@@ -239,6 +251,20 @@ pub async fn transcribe(audio_path: &Path, api_key: &str) -> Result<String, Tran
         .send()
         .await
         .map_err(map_llm_error)?;
+
+    if diagnostics {
+        let choice = response.choices.first();
+        eprintln!(
+            "diagnostics: ASR response id={}, model={}, choices={}, finish_reason={}, content_bytes={}, prompt_tokens={}, completion_tokens={}",
+            response.id,
+            response.model,
+            response.choices.len(),
+            choice.and_then(|item| item.finish_reason.as_deref()).unwrap_or("missing"),
+            choice.and_then(|item| item.message.content.as_ref()).map_or(0, String::len),
+            response.usage.prompt_tokens,
+            response.usage.completion_tokens
+        );
+    }
 
     extract_transcript(&response)
 }
