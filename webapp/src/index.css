@@ -3,6 +3,30 @@
   --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
+  /* The dark palette is the only theme currently shown in the app. */
+  color-scheme: dark;
+  --color-text: #edf2e9;
+  --color-text-secondary: #bdcabe;
+  --color-text-muted: #9eafa1;
+  --color-accent: #a7ddb0;
+  --color-accent-hover: #c6edc9;
+  --color-accent-label: #a7c9ab;
+  --color-bg: #151b18;
+  --color-bg-subtle: #202b24;
+  --color-border: #3b4a3e;
+  --color-selection: #385e42;
+
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background: var(--color-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Preserved for a possible future theme control; nothing selects it today. */
+:root[data-theme="light"] {
+  color-scheme: light;
   --color-text: #282f29;
   --color-text-secondary: #555d52;
   --color-text-muted: #65705e;
@@ -13,13 +37,6 @@
   --color-bg-subtle: #ecefe4;
   --color-border: #deded3;
   --color-selection: #dae6cc;
-
-  font-family: var(--font-body);
-  color: var(--color-text);
-  background: var(--color-bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
 }
 
 * { box-sizing: border-box; }
@@ -29,4 +46,4 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 6px;
 }
-::selection { background: var(--color-selection); }
+::selection { color: var(--color-text); background: var(--color-selection); }
