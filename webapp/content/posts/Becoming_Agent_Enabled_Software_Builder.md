@@ -4,6 +4,8 @@ date: "2026-09-25"
 youtube_url: "https://youtu.be/qkuSuoWcrSU"
 ---
 
+__Note__: This is an AI-assisted transcript and is not a verbatim or accessibility-certified transcript. There are some edits in the text to improve readibility. Text in square brackets, [], are in the video but are not needed for reading, so kept in brackets.
+
 Hey, Sumit here. Back again from my little farm in this tiny Himalayan village. Yeah, it's been fun. I think yesterday's video was really nice. For those who have not watched it, please feel free to go ahead and watch it. But yeah, the general idea was why I believe that working with agents, as in agent-driven software engineering or agent-led software engineering, why I believe that this is the future. And what is my background? Where do I come from? Why do I believe in this?
 
 So today, what we're going to talk about is, I want to keep this entire series as low technical, as non-technical as possible, as basically as open for the audience as possible. But there are of course going to be some discussions which are a little more, they'll have a little mix of technology, but it'll be a little open with regards to the variation of the topics. And today is kind of stepping slowly into what would the future of agent-led programming, agent-led software engineering look like. And if you am interested in getting into this, what does it really mean? Does it mean that you don't need to know anything about software? What do I believe? Where do I see this going ahead?

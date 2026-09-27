@@ -25,7 +25,7 @@ export default function Post() {
     >
       {(post) => (
         <article class={styles.post}>
-          <a class={styles.backLink} href={paths.posts()}>← All posts</a>
+          {/*<a class={styles.backLink} href={paths.posts()}>← All posts</a>*/}
           <p class={styles.date}>{formatDate(post().date)}</p>
           <h1 class={styles.title}>{post().title}</h1>
           <Show when={post().youtubeUrl}>
