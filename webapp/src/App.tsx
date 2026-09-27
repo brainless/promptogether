@@ -13,8 +13,8 @@ export default function App(props: { children?: JSX.Element }) {
         <nav class={styles.nav} aria-label="Main navigation">
           <a class={styles.navLink} href={paths.posts()}>Posts</a>
           <a class={styles.navLink} href={paths.concepts}>Concepts</a>
-          <a class={styles.navLink} href={paths.gallery}>Gallery</a>
-          <a class={styles.startLink} href="/#start-a-project">Start a Project <span aria-hidden="true">↗</span></a>
+          {/*<a class={styles.navLink} href={paths.gallery}>Gallery</a>*/}
+          {/*<a class={styles.startLink} href="/#start-a-project">Start a Project <span aria-hidden="true">↗</span></a>*/}
         </nav>
       </header>
 

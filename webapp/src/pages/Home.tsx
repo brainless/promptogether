@@ -24,7 +24,7 @@ export default function Home() {
         </div>
       </section>
 
-      <GalleryPreview />
+      {/*<GalleryPreview />*/}
 
       <section class={styles.section} id="start-a-project" aria-labelledby="start-title" tabindex="-1">
         <p class={styles.eyebrow}>01 / Build what matters to you</p>

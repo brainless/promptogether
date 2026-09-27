@@ -1,6 +1,6 @@
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .page { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 0; border-bottom: 1px solid var(--color-border); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
 .brand { font-size: 19px; font-weight: 700; letter-spacing: -1px; text-decoration: none; }
 .brandAccent { font-weight: 400; }
 .nav { display: flex; align-items: center; gap: 20px; }
@@ -48,7 +48,7 @@
 
 @media (min-width: 640px) {
   .page { padding: 0 48px; }
-  .header { padding: 28px 0; }
+  .header { padding: 16px 0; }
   .brand { font-size: 23px; }
   .navLink { font-size: 14px; }
   .startLink { font-size: 14px; }
