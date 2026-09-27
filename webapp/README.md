@@ -28,7 +28,7 @@ VITE_API_ORIGIN=http://localhost:4000 npm run dev
 
 ## Build
 
-`npm run build` checks types, builds the SPA to `dist/`, and then generates a static HTML page per post under `dist/posts/` (see Posts below). Use `npm run preview` to serve the production build locally.
+`npm run build` checks types, reads `content/concepts.sqlite`, builds the SPA, and generates static HTML for posts and `/concepts`. Use `npm run preview` to serve the production build locally. Reading SQLite at build time requires Node.js 22.16 or newer for `node:sqlite`.
 
 ## Routes
 
@@ -39,6 +39,7 @@ VITE_API_ORIGIN=http://localhost:4000 npm run dev
 | `/gallery/:slug` | Project detail — prompt, initial files, and result files |
 | `/posts` | Posts — blog index |
 | `/posts/:slug` | Post — a single post, statically pre-rendered for SEO |
+| `/concepts` | Concepts — a static index of terms, definitions, and related posts |
 
 ## Posts
 
@@ -56,11 +57,34 @@ slug: "custom-slug"                                    # optional; defaults to t
 Post body in Markdown.
 ```
 
-`npm run dev` picks up new/edited posts on file change (full reload). `npm run build` renders each post to `dist/posts/<slug>/index.html` with a post-specific `<title>`, meta description, and Open Graph/Twitter tags — important because the rest of the app is a client-rendered SPA that search engines and link-preview crawlers can't reliably read, but these pages are plain static HTML per post. Only `/posts` and `/posts/:slug` get this treatment; the homepage and gallery remain a single client-rendered `index.html`.
+`npm run dev` picks up new/edited posts on file change (full reload). `npm run build` renders each post to `dist/posts/<slug>/index.html` with a post-specific `<title>`, meta description, and Open Graph/Twitter tags. `/concepts` also gets static HTML. The homepage and gallery remain a client-rendered `index.html`.
+
+## Concepts
+
+`content/concepts.sqlite` is the committed source of truth for the concept index. The tables are `concepts` (slug, display name, short definition, optional external URL), `concept_aliases` (alternate terms in transcripts), and `concept_posts` (explicit links to post slugs). Cloudflare Pages reads the file while building; only the generated site in `dist/` is deployed.
+
+From the repository root, use the Rust CLI to find a concept in the Markdown posts, ask MiMo V2.6 Flash for a short definition, and save it locally:
+
+```sh
+export XIAOMI_API_KEY="..."
+cargo run -p concept-cli -- "coding agent"
+cd webapp && npm run build
+```
+
+Use `--overwrite` to regenerate an existing concept. You can also edit the database with `sqlite3`:
+
+```sh
+sqlite3 content/concepts.sqlite "INSERT INTO concepts (slug, name, definition) VALUES ('prompt', 'Prompt', 'An instruction or question given to an AI model.');"
+sqlite3 content/concepts.sqlite "INSERT INTO concept_posts (concept_slug, post_slug) VALUES ('prompt', 'Introduction');"
+```
+
+The build rejects links to post slugs that do not exist. Post slugs use the Markdown filename unless frontmatter sets `slug`. The post page sidebar lists explicitly linked concepts. Its body links the first matching plain-text mention of each concept or alias to `/concepts`; existing links and code are left alone. A concept can still appear in the sidebar when its exact term is absent from the transcript. The dev server reloads after database changes. Commit the SQLite file with concept changes; no JSON export is needed.
+
+Only generated HTML, CSS, and JavaScript go to `dist/`. Visitors make no concept API requests and do not download the SQLite file.
 
 ## Production redirects (Cloudflare Pages)
 
-`public/_redirects` is copied into `dist/` on build and covers two things: explicit rewrites so a clean URL like `/posts/<slug>` resolves to its prerendered `dist/posts/<slug>/index.html`, and the SPA fallback (`/* /index.html 200`) for client-side routing on `/gallery` and other in-app routes. No dashboard configuration should be needed on Cloudflare Pages beyond a default static deploy.
+`public/_redirects` is copied into `dist/` on build. It rewrites clean `/posts`, `/posts/<slug>`, and `/concepts` URLs to their prerendered files and retains the SPA fallback for other routes. On Cloudflare Pages, set the project root to `webapp`, build command to `npm run build`, and output directory to `dist`. Use a build image with Node.js 22.16 or newer.
 
 ## Conventions
 

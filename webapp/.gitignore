@@ -1,3 +1,6 @@
 node_modules/
 dist/
 *.local
+content/*.sqlite-wal
+content/*.sqlite-shm
+content/*.sqlite-journal

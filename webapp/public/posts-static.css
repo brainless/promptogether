@@ -86,6 +86,22 @@
 .pt-body p {
   margin: 0 0 20px;
 }
+.pt-body .concept-term { color: var(--color-accent); font-weight: 600; text-decoration-style: dotted; text-underline-offset: 4px; }
+.pt-post-layout { display: grid; gap: 40px; }
+.pt-concepts { border-top: 1px solid var(--color-border); padding-top: 24px; }
+.pt-concepts h2 { margin: 0 0 16px; font-size: 14px; }
+.pt-concepts ul { list-style: none; padding: 0; margin: 0; }
+.pt-concepts li { margin-bottom: 20px; }
+.pt-concepts a, .pt-concept-list a { color: var(--color-accent); text-underline-offset: 4px; }
+.pt-concepts p { margin: 6px 0 0; color: var(--color-text-muted); font-size: 13px; line-height: 1.6; }
+.pt-concept-list { list-style: none; max-width: 760px; padding: 0; margin: 32px 0 0; }
+.pt-concept-list > li { border-top: 1px solid var(--color-border); padding: 24px 0; }
+.pt-concept-list h2 { margin: 0 0 8px; font-size: 21px; }
+.pt-concept-list p { margin: 0 0 12px; color: var(--color-text-secondary); line-height: 1.7; }
+.pt-concept-list h3 { margin: 20px 0 8px; font-size: 13px; }
+.pt-concept-list ul { list-style: none; padding: 0; }
+.pt-concept-list ul li { margin: 0 0 8px; }
+@media (min-width: 900px) { .pt-post-layout { grid-template-columns: minmax(0, 680px) minmax(220px, 1fr); gap: 48px; } .pt-concepts { border-top: 0; border-left: 1px solid var(--color-border); padding: 0 0 0 24px; } }
 .pt-list {
   list-style: none;
   margin: 0;

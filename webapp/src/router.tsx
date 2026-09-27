@@ -7,6 +7,7 @@ const Gallery = lazy(() => import("./pages/Gallery"));
 const GalleryProject = lazy(() => import("./pages/GalleryProject"));
 const Posts = lazy(() => import("./pages/Posts"));
 const Post = lazy(() => import("./pages/Post"));
+const Concepts = lazy(() => import("./pages/Concepts"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const instance = createRouter({
@@ -27,6 +28,7 @@ const instance = createRouter({
         { path: "/:slug", component: Post },
       ],
     },
+    { path: "/concepts", component: Concepts },
     { path: "*404", component: NotFound },
   ],
 });

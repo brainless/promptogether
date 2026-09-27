@@ -397,6 +397,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "concept-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dotenvy",
+ "llm-sdk",
+ "regex",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "const-oid"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

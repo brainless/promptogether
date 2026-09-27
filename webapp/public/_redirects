@@ -8,6 +8,7 @@
 # rather than falling through to the SPA shell below.
 /posts/:slug   /posts/:slug/index.html   200
 /posts         /posts/index.html         200
+/concepts      /concepts/index.html      200
 
 # Client-side routing fallback for the rest of the app (homepage, gallery).
 /*             /index.html               200

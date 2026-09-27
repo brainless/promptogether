@@ -18,6 +18,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPosts } from "./posts.mjs";
 import { extractYouTubeId } from "./youtube.mjs";
+import { linkConcepts } from "./concept-links.mjs";
+import { loadConcepts } from "./concepts.mjs";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url)) + "/..";
 const distDir = path.resolve(rootDir, "dist");
@@ -43,6 +45,7 @@ function headerHtml() {
     <a class="pt-brand" href="/">prompt<span>ogether</span>.</a>
     <nav class="pt-nav" aria-label="Main navigation">
       <a href="/posts">Posts</a>
+      <a href="/concepts">Concepts</a>
       <a href="/gallery">Gallery</a>
     </nav>
   </header>`;
@@ -109,14 +112,17 @@ function main() {
 
   const baseTemplate = fs.readFileSync(path.join(distDir, "index.html"), "utf-8");
   const posts = loadPosts(contentDir);
+  const concepts = loadConcepts(path.resolve(rootDir, "content/concepts.sqlite"), posts);
 
   for (const post of posts) {
+    const related = concepts.filter((concept) => concept.posts.some((item) => item.slug === post.slug));
     const bodyHtml = `${headerHtml()}<main class="pt-page pt-main">
       <a class="pt-back" href="/posts">&larr; All posts</a>
       <p class="pt-date">${escapeHtml(formatDate(post.date))}</p>
       <h1 class="pt-title">${escapeHtml(post.title)}</h1>
       ${post.youtubeUrl ? youtubeEmbedHtml(post.youtubeUrl, post.title) : ""}
-      <div class="pt-body">${post.html}</div>
+      <div class="pt-post-layout"><div class="pt-body">${linkConcepts(post.html, related)}</div>
+      ${related.length ? `<aside class="pt-concepts" aria-labelledby="pt-concepts-title"><h2 id="pt-concepts-title">Concepts in this post</h2><ul>${related.map((concept) => `<li><a href="/concepts#${concept.slug}">${escapeHtml(concept.name)}</a><p>${escapeHtml(concept.definition)}</p></li>`).join("")}</ul></aside>` : ""}</div>
     </main>${footerHtml()}`;
 
     writePage(
@@ -161,7 +167,20 @@ function main() {
     indexBodyHtml,
   );
 
-  console.log(`Prerendered ${posts.length} post page(s) and the /posts index into dist/posts/`);
+  const conceptItems = concepts.map((concept) => `<li id="${concept.slug}">
+    <h2>${escapeHtml(concept.name)}</h2>
+    <p>${escapeHtml(concept.definition)}</p>
+    ${concept.url ? `<a href="${escapeHtml(concept.url)}">Learn more ↗</a>` : ""}
+    ${concept.posts.length ? `<h3>In these posts</h3><ul>${concept.posts.map((post) => `<li><a href="/posts/${post.slug}">${escapeHtml(post.title)}</a></li>`).join("")}</ul>` : ""}
+  </li>`).join("\n");
+  writePage(
+    "concepts/index.html",
+    baseTemplate,
+    { title: "Concepts — Prompt Together", description: "A plain-language index of ideas used in Prompt Together posts.", path: "/concepts", ogType: "website", youtubeUrl: null },
+    `${headerHtml()}<main class="pt-page pt-main"><h1 class="pt-title">Concepts</h1><p>A quick guide to terms used in our posts.</p><ul class="pt-concept-list">${conceptItems}</ul></main>${footerHtml()}`,
+  );
+
+  console.log(`Prerendered ${posts.length} post page(s), /posts, and /concepts`);
 }
 
 main();

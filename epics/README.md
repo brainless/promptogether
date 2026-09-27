@@ -30,9 +30,14 @@ Epics 2 and 3 can proceed once the workspace exists. Epic 4 establishes the
 worker foundation for later AI helpers but is not required to fake asynchronous
 work in the gallery. Epics 5 and 6 deliver the first visible vertical slice.
 
+## Later content workflows
+
+7. [Video-to-Markdown content workflow](07-video-to-markdown-cli.md)
+8. [Concepts from video posts](08-concepts-from-posts.md) — retrospective of
+   the SQLite concept index, CLI, and static webapp build.
+
 ## External references
 
 - [`ts-rs` documentation](https://docs.rs/ts-rs/latest/ts_rs/)
 - [SQLx migration macro](https://docs.rs/sqlx/latest/sqlx/macro.migrate.html)
 - [Axum documentation](https://docs.rs/axum/latest/axum/)
-
