@@ -28,12 +28,37 @@ pub async fn existing_slug(
     Ok(row.map(|row| row.get("slug")))
 }
 
+pub async fn aliases(db: &mut SqliteConnection, slug: &str) -> Result<Vec<String>, sqlx::Error> {
+    let rows =
+        sqlx::query("SELECT alias FROM concept_aliases WHERE concept_slug = ? ORDER BY alias")
+            .bind(slug)
+            .fetch_all(db)
+            .await?;
+    Ok(rows.into_iter().map(|row| row.get("alias")).collect())
+}
+
+pub async fn term_owner(
+    db: &mut SqliteConnection,
+    term: &str,
+) -> Result<Option<String>, sqlx::Error> {
+    let row = sqlx::query(
+        "SELECT slug FROM concepts WHERE lower(name) = lower(?) \
+         UNION SELECT concept_slug AS slug FROM concept_aliases WHERE lower(alias) = lower(?) LIMIT 1",
+    )
+    .bind(term)
+    .bind(term)
+    .fetch_optional(db)
+    .await?;
+    Ok(row.map(|row| row.get("slug")))
+}
+
 pub async fn save(
     db: &mut SqliteConnection,
     slug: &str,
     name: &str,
     definition: &str,
     post_slugs: &[String],
+    aliases: &[String],
     overwrite: bool,
 ) -> Result<(), sqlx::Error> {
     let mut tx = db.begin().await?;
@@ -59,6 +84,13 @@ pub async fn save(
         sqlx::query("INSERT INTO concept_posts (concept_slug, post_slug) VALUES (?, ?)")
             .bind(slug)
             .bind(post_slug)
+            .execute(&mut *tx)
+            .await?;
+    }
+    for alias in aliases {
+        sqlx::query("INSERT INTO concept_aliases (concept_slug, alias) VALUES (?, ?)")
+            .bind(slug)
+            .bind(alias)
             .execute(&mut *tx)
             .await?;
     }

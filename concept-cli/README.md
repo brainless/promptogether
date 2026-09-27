@@ -7,7 +7,8 @@ From the repository root:
 ```sh
 export XIAOMI_API_KEY="..."   # or put it in the repository-root .env
 cargo run -p concept-cli -- "Claude Code" --overwrite
+cargo run -p concept-cli -- "agent" --alias "coding agent" --overwrite
 cd webapp && npm run build
 ```
 
-The CLI requires the committed SQLite file. MiMo V2.6 Flash is the default model; use `--model MODEL_ID` to select another Xiaomi chat model supported by `llm-sdk`. The CLI refuses terms absent from post bodies and existing concepts unless `--overwrite` is given. `--overwrite` updates the definition and post links but keeps the concept's slug, URL, and aliases. A failed or incomplete LLM response is not saved. Review the generated definition and related posts before committing the database. The webapp build validates post links and generates the static sidebar and Concepts page directly from SQLite. Never commit the API key.
+The CLI requires the committed SQLite file. MiMo V2.6 Flash is the default model; use `--model MODEL_ID` to select another Xiaomi chat model supported by `llm-sdk`. The CLI searches the concept name and saved aliases, plus simple plural forms such as `LLMs`, `agents`, and `harnesses`. A plural found in a post is saved as an alias. Use repeatable `--alias TERM` for other spellings or irregular forms; these are searched and saved. The CLI refuses terms absent from post bodies and existing concepts unless `--overwrite` is given. `--overwrite` updates the definition and post links but keeps the concept's slug, URL, and aliases while adding any new ones. A failed or incomplete LLM response is not saved. Review the generated definition and related posts before committing the database. The webapp build validates post links and generates the static sidebar and Concepts page directly from SQLite. Never commit the API key.

@@ -19,7 +19,10 @@ export function linkConcepts(html, concepts) {
       return part;
     }
     if (depth || !part.trim()) return part;
-    return part.replace(pattern, (match) => {
+    return part.replace(pattern, (match, _term, offset) => {
+      if (!match.includes(".") && part.slice(offset + match.length, offset + match.length + 3).toLowerCase() === ".md") {
+        return match;
+      }
       const concept = terms.get(match.toLowerCase());
       if (!concept || linked.has(concept.slug)) return match;
       linked.add(concept.slug);
