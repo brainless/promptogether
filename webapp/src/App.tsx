@@ -7,7 +7,7 @@ export default function App(props: { children?: JSX.Element }) {
     <div class={styles.page}>
       <a class={styles.skipLink} href="#main">Skip to content</a>
       <header class={styles.header}>
-        <a class={styles.brand} href="/" aria-label="Prompt Together home">
+        <a class={styles.brand} href="/" aria-label="promptogether home">
           prompt<span class={styles.brandAccent}>ogether</span><span aria-hidden="true">.</span>
         </a>
         <nav class={styles.nav} aria-label="Main navigation">
@@ -23,7 +23,7 @@ export default function App(props: { children?: JSX.Element }) {
       </main>
 
       <footer class={styles.footer}>
-        <span>Prompt Together</span>
+        <span>promptogether</span>
         <span>Build what you need.</span>
       </footer>
     </div>

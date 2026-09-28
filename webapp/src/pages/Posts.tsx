@@ -8,7 +8,7 @@ export default function Posts() {
   return (
     <div class={styles.postsIndex}>
       <h1>Posts</h1>
-      <p class={styles.subtitle}>Notes, updates, and videos from building Prompt Together.</p>
+      <p class={styles.subtitle}>Notes, updates, and videos from building promptogether.</p>
 
       <Show
         when={posts.length > 0}

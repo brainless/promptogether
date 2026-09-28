@@ -16,6 +16,9 @@
 .hero h1 em { color: var(--color-accent); font-weight: 400; }
 .intro { max-width: 490px; margin: 28px 0 20px; font-size: 18px; line-height: 1.7; color: var(--color-text-secondary); }
 .note { font-size: 12px; line-height: 1.6; color: var(--color-text-muted); }
+.aboutMe { display: flex; align-items: center; gap: 20px; padding: 0 0 32px; }
+.aboutMePhoto { flex: none; width: 88px; height: 88px; border-radius: 50%; object-fit: cover; background: var(--color-bg-subtle); border: 1px solid var(--color-border); }
+.aboutMe p { margin: 0; max-width: 440px; font-size: 17px; line-height: 1.7; color: var(--color-text-secondary); }
 .videoSection { padding: 24px 0; }
 .videoContainer { position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 6px; }
 .videoContainer iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
@@ -53,6 +56,8 @@
   .navLink { font-size: 14px; }
   .startLink { font-size: 14px; }
   .hero { padding: 48px 0 24px; }
+  .aboutMe { padding: 0 0 40px; }
+  .aboutMePhoto { width: 150px; height: 150px; }
   .videoSection { padding: 24px 0; }
   .galleryPreview { padding: 56px 0; }
   .section { padding: 56px 0; }

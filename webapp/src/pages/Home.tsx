@@ -1,15 +1,19 @@
 import styles from "../App.module.css";
-import GalleryPreview from "../components/GalleryPreview";
-
-const YOUTUBE_VIDEO_ID = "YOUR_VIDEO_ID_HERE";
+import { paths } from "../router";
+// import GalleryPreview from "../components/GalleryPreview";
 
 export default function Home() {
   return (
     <>
       <section class={styles.hero} aria-labelledby="welcome-title">
         <p class={styles.eyebrow}>Build what you need</p>
-        <h1 id="welcome-title">Turn your ideas<br />into software.<br /><em>We'll show you how.</em></h1>
-        <p class={styles.intro}>Learn to build the tools, apps, and automations you actually need—no coding background required. Prompt Together helps you go from idea to working software with coding agents.</p>
+        <h1 id="welcome-title">Turn your ideas<br />into software.<br /><em>I'll show you how.</em></h1>
+      </section>
+
+      <section class={styles.aboutMe} aria-labelledby="about-me-title">
+        <h2 id="about-me-title" class={styles.srOnly}>About Sumit</h2>
+        <img class={styles.aboutMePhoto} src="/SumitDatta_Profile_Picture_Small.jpg" alt="Photo of Sumit" width="150" height="150" />
+        <p>Hey, I am Sumit, an engineer for 18 years. I'll help you build software automation that you need, even if you do not have any coding knowledge.</p>
       </section>
 
       <section class={styles.videoSection} aria-labelledby="video-title">
@@ -17,7 +21,7 @@ export default function Home() {
         <div class={styles.videoContainer}>
           <iframe
             src={`https://www.youtube.com/embed/6WvyIpyxEVU`}
-            title="Prompt Together introduction"
+            title="promptogether introduction"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen
           />
@@ -27,38 +31,34 @@ export default function Home() {
       {/*<GalleryPreview />*/}
 
       <section class={styles.section} id="start-a-project" aria-labelledby="start-title" tabindex="-1">
-        <p class={styles.eyebrow}>01 / Build what matters to you</p>
-        <h2 id="start-title">Start with something useful.</h2>
-        <p>A budget tracker for your side business. An invoice generator for your freelance work. A scheduling tool for your team. A personal finance dashboard. Start with the problem you want to solve—we'll help you build it.</p>
-        <p>Guided tours walk you through building real software with a coding agent, step by step. No experience needed.</p>
-        <span class={styles.status}>Guided tours · Coming soon</span>
+        <h2 id="start-title">Videos on YouTube, reading material here.</h2>
+        <p>Every idea starts as a video where I build something real and think out loud along the way. I write up the same ground as posts here on the site, so you can follow along, revisit a step, or skip straight to the part you need.</p>
+        <p>Files piling up in your inbox. A team that needs a shared view of who's doing what. A small business that's outgrown its spreadsheets. That's the kind of automation we'll build together.</p>
+        <a class={styles.startLink} href={paths.posts()}>Read the posts <span aria-hidden="true">↗</span></a>
       </section>
 
-      <section class={styles.section} aria-labelledby="community-title">
-        <p class={styles.eyebrow}>02 / Learn from others building too</p>
-        <h2 id="community-title">See what's possible.</h2>
-        <p>Browse projects others have built—small business tools, personal productivity apps, finance trackers, and more. Share your own builds, ask questions, and learn from a community of people making software for real life.</p>
-        <span class={styles.status}>Community forum · Coming soon</span>
+      <section class={styles.section} aria-labelledby="concepts-title">
+        <h2 id="concepts-title">Build a glossary, one video at a time.</h2>
+        <p>Coding agents, prompts, context, workflows—the terms pile up fast when you're new to this. Every concept introduced in a video or post gets added to a growing glossary, so you always have somewhere to look things up in plain language.</p>
+        <a class={styles.startLink} href={paths.concepts}>Browse concepts <span aria-hidden="true">↗</span></a>
       </section>
 
-      <section class={styles.section} aria-labelledby="questions-title">
-        <p class={styles.eyebrow}>03 / Get unstuck fast</p>
-        <h2 id="questions-title">Every question gets you closer.</h2>
-        <p>Confused by an error? Not sure which tool to use? Ask anything. Our Q&A is built to help you move forward and leave answers that help the next person too.</p>
-        <span class={styles.status}>Questions & answers · Coming soon</span>
+      <section class={styles.section} aria-labelledby="use-cases-title">
+        <h2 id="use-cases-title">Software for personal, family, and small business use.</h2>
+        <p>I'm putting together focused content for people running very small businesses, managing a household, or just trying to keep personal projects organized—practical automation for the everyday, not enterprise software.</p>
+        <span class={styles.status}>Use-case series · Coming soon</span>
       </section>
 
-      <section class={styles.section} aria-labelledby="help-title">
-        <p class={styles.eyebrow}>04 / Keep building</p>
-        <h2 id="help-title">AI help when you're stuck.</h2>
-        <p>Get interactive help from AI to debug issues, explain what's happening, and find your next step. We're building this to keep you moving when you hit a wall.</p>
-        <span class={styles.status}>Live AI help · In exploration</span>
+      <section class={styles.section} aria-labelledby="share-title">
+        <h2 id="share-title">Tell me what you're trying to build.</h2>
+        <p>Soon you'll be able to share your own ideas and needs directly on this site, so we can dig into your specific problem together—not just a generic example.</p>
+        <span class={styles.status}>Share your idea · Coming soon</span>
       </section>
 
       <section class={styles.closing} aria-labelledby="closing-title">
-        <p class={styles.eyebrow}>Empowering builders everywhere</p>
+        <p class={styles.eyebrow}>A personal project, made in the open</p>
         <h2 id="closing-title">The tools you need, built by you.</h2>
-        <p>Built from hands-on learning sessions with hundreds of people. Prompt Together exists because everyone deserves the power to create their own software—whether it's for your business, your finances, or your daily life.</p>
+        <p>promptogether grew out of co-hosted learning sessions I've run for hundreds of people. It exists because everyone deserves the power to create their own software—whether it's for your business, your family, or your daily life.</p>
       </section>
     </>
   );
