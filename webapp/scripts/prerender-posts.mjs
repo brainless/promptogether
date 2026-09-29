@@ -61,7 +61,28 @@ function formatDate(iso) {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
-function renderHead(baseHead, { title, description, path: pagePath, ogType, youtubeUrl }) {
+function isoDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString().slice(0, 10);
+}
+
+function blogPostingJsonLd(post, pageUrl) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "@id": `${pageUrl}#article`,
+    mainEntityOfPage: pageUrl,
+    headline: post.title,
+    description: post.description,
+    datePublished: isoDate(post.date),
+    url: pageUrl,
+    author: { "@type": "Person", "@id": `${siteUrl}/#person`, name: "Sumit Datta", url: `${siteUrl}/` },
+    publisher: { "@type": "Person", "@id": `${siteUrl}/#person`, name: "Sumit Datta", url: `${siteUrl}/` },
+    ...(post.youtubeUrl ? { video: { "@type": "VideoObject", "@id": post.youtubeUrl, url: post.youtubeUrl } } : {}),
+  };
+}
+
+function renderHead(baseHead, { title, description, path: pagePath, ogType, youtubeUrl, jsonLd }) {
   let head = baseHead
     .replace(/<title>.*?<\/title>/s, `<title>${escapeHtml(title)}</title>`)
     .replace(
@@ -91,6 +112,9 @@ function renderHead(baseHead, { title, description, path: pagePath, ogType, yout
     }
   }
   ogTags.push('<link rel="stylesheet" href="/posts-static.css">');
+  if (jsonLd) {
+    ogTags.push(`<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`);
+  }
 
   return head.replace("</head>", `  ${ogTags.join("\n  ")}\n  </head>`);
 }
@@ -134,6 +158,7 @@ function main() {
         path: `/posts/${post.slug}`,
         ogType: "article",
         youtubeUrl: post.youtubeUrl,
+        jsonLd: blogPostingJsonLd(post, `${siteUrl}/posts/${post.slug}`),
       },
       bodyHtml,
     );
