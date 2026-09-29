@@ -17,8 +17,15 @@ marked.use({ gfm: true, breaks: false });
  * Required frontmatter: `title`, `date` (any string `Date` can parse, e.g.
  * `2026-09-20`). Optional: `description` (falls back to a plain-text
  * excerpt of the body), `youtube_url`, `slug` (falls back to the filename
- * without its `.md` extension).
+ * without its `.md` extension, slugified to lowercase-with-dashes).
  */
+function slugify(value) {
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 export function loadPosts(contentDir) {
   if (!fs.existsSync(contentDir)) return [];
 
@@ -36,7 +43,7 @@ export function loadPosts(contentDir) {
       throw new Error(`Post "${file}" is missing the required frontmatter field "date"`);
     }
 
-    const slug = data.slug ? String(data.slug) : file.replace(/\.md$/, "");
+    const slug = data.slug ? String(data.slug) : slugify(file.replace(/\.md$/, ""));
     const body = content.trim();
 
     return {
